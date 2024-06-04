@@ -1,0 +1,22 @@
+{
+    "typeCheckingMode": "basic",
+    "include": [
+        "isdleda"
+    ],
+    "exclude": [
+        "**/__pycache__",
+        "**/.git",
+        "**/.vscode",
+    ],
+    "reportMissingTypeStubs": false,
+    "reportUnusedImport": true,
+    "reportUnusedVariable": true,
+    "reportOptionalSubscript": false,
+    "reportOptionalMemberAccess": false,
+    "pythonVersion": "3.11",
+    "extraPaths": [
+        "./submodules/cryptographic_estimators",
+        "./submodules/isd_scripts",
+
+    ]
+}
