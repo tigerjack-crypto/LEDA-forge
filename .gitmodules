@@ -1,0 +1,6 @@
+[submodule "submodules/cryptographic_estimators"]
+	path = submodules/cryptographic_estimators
+	url = https://github.com/Crypto-TII/CryptographicEstimators.git
+[submodule "submodules/isd_scripts"]
+	path = submodules/isd_scripts
+	url = git@github.com:tigerjack/2019-ISD-scripts
