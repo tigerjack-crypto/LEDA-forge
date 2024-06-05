@@ -29,5 +29,5 @@ OUT_FILES_QLB_SYMBOLIC: str = os.path.join(OUT_FILES_QLB_DIR, "0_symbolic")
 PRIMES_FILE_CSV = os.path.join("assets", "proper_primes.csv")
 
 
-ISD_VALUES_FILE_PKL = os.path.join("out", "isd_values")
-ISD_VALUES_FILE_JSON = os.path.join("out", "isd_values")
+ISD_VALUES_FILE_PKL = os.path.join("out", "isd_values.pkl")
+ISD_VALUES_FILE_JSON = os.path.join("out", "isd_values.json")
