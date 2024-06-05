@@ -1,19 +1,20 @@
-import itertools
 import os
+from dataclasses import replace
 from enum import IntEnum
+from typing import Sequence
 
+from isdleda.utils.common import Value
 from isdleda.utils.export.export import (load_from_pickle, save_to_pickle,
                                          save_to_txt)
-from isdleda.utils.paths import OUT_FILES_QLB_SYMBOLIC
-from isdleda.utils.static import get_primes
+from isdleda.utils.paths import (ISD_VALUES_FILE_PKL, OUT_FILES_QLB_FMT,
+                                 OUT_FILES_QLB_SYMBOLIC)
 # ISD_scripts
 from measures.common import CodeExtended
 from measures.leebrickell_quantum import LeeBrickellQuantum
-from sage.all import var
+from sage.all import assume, var
 # SAGE
 from sage.rings.all import RealField
 from utils.datamanipulation import replace_exp_valuedict
-from dataclasses import replace
 
 REAL_PREC = 1000
 REAL_FIELD = RealField(prec=REAL_PREC)
@@ -51,7 +52,6 @@ def _store_formula(out: OutType, res):
 
 
 def main():
-    # _store_formula(OutType.TXT)
     pickle_file = OUT_FILES_QLB_SYMBOLIC.format(out_type="pkl")
     if not os.path.isfile(pickle_file):
         res = _get_formula()
@@ -59,70 +59,50 @@ def main():
     else:
         res = load_from_pickle(pickle_file)
 
-    ts = {128: range(40, 140), 192: range(70, 200), 256: range(100, 280)}
-    n0s = range(2, 6)
-    primes = get_primes()
-    ps = range(1, 3)
-
-    # launch: Type[CodeExtendedSage]
-    # print(OUT_FILES_QLB_FMT)
-
-    for (n0, prime, p, t) in itertools.product(n0s, primes, ps, ts[128]):
-        print(n0, p, t)
-        if (prime * n0) < (t * 5):
-            print("continue")
-            continue
-
+    isd_values: Sequence[Value] = load_from_pickle(ISD_VALUES_FILE_PKL)
+    for value in isd_values:
         n_o, k_o, t_o, r_o, p_o = var("n_o, k_o, t_o, r_o, p_o",
                                       domain="integer")
+        assume(n_o > 0, k_o > 0, t_o > 0, r_o > 0, p_o > 0)
         var_subs = {
-            n_o: REAL_FIELD(prime * n0),
-            k_o: REAL_FIELD(prime * n0 - prime),
-            t_o: REAL_FIELD(t),
-            r_o: REAL_FIELD(prime),
-            p_o: REAL_FIELD(p),
+            n_o: REAL_FIELD(value.n),
+            k_o: REAL_FIELD(value.n - value.r),
+            r_o: REAL_FIELD(value.r),
+            t_o: REAL_FIELD(value.t),
         }
-        # Dict associting to each string a corresponding name
-        # var_by_names = {str(v): v for v in (n_o, k_o, t_o, r_o, p_o)}
-        # res.in_params = LeeBrickellQuantum.get_dict_input_params_cls(True, var_by_names,
-        #                                       var_by_names, var_subs)
+        for p in range(1, 4):
+            var_subs[p_o] = REAL_FIELD(p)
 
-        # LeeBrickellQuantum.replace_with_real_values(res, var_subs)
+            print(var_subs)
 
-        normal2 = replace_exp_valuedict(
-            res.normal2,  # lsp: ignore
-            var_subs,
-            numerical=True)
-        normal_expanded2 = replace_exp_valuedict(res.normal_expanded2,
-                                                 var_subs,
-                                                 numerical=True)
-        tmeas2 = replace_exp_valuedict(res.tmeas2, var_subs, numerical=True)
-        res2 = replace(
-            res,
-            normal2=normal2,
-            normal_expanded2=normal_expanded2,
-            tmeas2=tmeas2,
-            normal=None,
-            normal_expanded=None,
-            tmeas=None,
-        )
-        print(res2)
-
-        # launch = LeeBrickellQuantum
-
-        # meas = launch(CodeExtended("LEDA",
-        #                            SecurityLevels.UND,
-        #                            prime * n0,
-        #                            prime * n0 - prime,
-        #                            t,
-        #                            is_cyclic=False,
-        #                            init_real_values=True),
-        #               p=p)
-        # kwords = {}
-        # kwords["subs"] = True
-        # res = meas.go(**kwords)
-        # print(res)
-        # break
+            normal2 = replace_exp_valuedict(
+                res.normal2,  # lsp: ignore
+                var_subs,
+                numerical=True)
+            normal_expanded2 = replace_exp_valuedict(res.normal_expanded2,
+                                                     var_subs,
+                                                     numerical=True)
+            tmeas2 = replace_exp_valuedict(res.tmeas2,
+                                           var_subs,
+                                           numerical=True)
+            res2 = replace(
+                res,
+                normal2=normal2,
+                normal_expanded2=normal_expanded2,
+                tmeas2=tmeas2,
+                normal=None,
+                normal_expanded=None,
+                tmeas=None,
+            )
+            out_file = OUT_FILES_QLB_FMT.format(
+                out_type='bin',
+                n=value.n,
+                r=value.r,
+                t=value.t,
+                p=p,
+                ext='.pkl',
+            )
+            save_to_pickle(out_file, res2)
 
 
 if __name__ == '__main__':
