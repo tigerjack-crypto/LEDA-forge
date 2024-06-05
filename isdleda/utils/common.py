@@ -10,7 +10,7 @@ class Attacks(StrEnum):
     MsgR = auto()
 
 
-@dataclass(eq=True, frozen=True)
+@dataclass(eq=True, frozen=True, order=True)
 class Value:
     n: int
     r: int
@@ -24,9 +24,9 @@ class Value:
     #     self.k = self.n - self.r
 
 
-@dataclass
+@dataclass(order=True)
 class ISDVariant:
+    value: Value
     attack: Attacks = field(compare=False)
     isd_variant: str
     isd_variant_options: Dict[str, Any]
-    value: Value
