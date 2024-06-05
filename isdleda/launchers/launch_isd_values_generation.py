@@ -63,17 +63,18 @@ def main():
                 values.add(value)
 
                 # key recovery 2 (2p, p, 2v)
-                value = Value(n=prime * 2,
-                              r=prime,
-                              t=2 * v,
-                              prime=prime,
-                              n0=n0,
-                              v=v)
-                values.add(value)
+                if n0 == 2:
+                    value = Value(n=prime * 2,
+                                  r=prime,
+                                  t=2 * v,
+                                  prime=prime,
+                                  n0=n0,
+                                  v=v)
+                    values.add(value)
 
                 # key recovery 3 (n0*p, (n0-1)*p, n0*v
                 value = Value(n=prime * n0,
-                              r=prime,
+                              r=prime * (n0 - 1),
                               t=2 * v,
                               prime=prime,
                               n0=n0,
