@@ -93,9 +93,10 @@ def main():
                 # msg recovery p*n0, p, t
                 value = Value(n=prime * n0,
                               r=prime,
-                              t=2 * v,
+                              t=t,
                               prime=prime,
-                              n0=n0)
+                              n0=n0,
+                              v=None)
                 values.add(value)
                 # for p in range(1, 4):
                 #     # quantum msg recovery p*n0, p, t
@@ -103,7 +104,7 @@ def main():
     print(f"Pickling to {ISD_VALUES_FILE_PKL}")
     save_to_pickle(ISD_VALUES_FILE_PKL, values)
     print(f"JSONing to {ISD_VALUES_FILE_JSON}")
-    save_to_json(ISD_VALUES_FILE_JSON, [asdict(x) for x in values])
+    save_to_json(ISD_VALUES_FILE_JSON, [asdict(x) for x in sorted(values)])
 
 
 if __name__ == '__main__':
