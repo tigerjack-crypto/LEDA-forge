@@ -13,7 +13,7 @@
     "reportUnusedVariable": true,
     "reportOptionalSubscript": false,
     "reportOptionalMemberAccess": false,
-    "pythonVersion": "3.11",
+    "pythonVersion": "3.12",
     "extraPaths": [
         "./submodules/cryptographic_estimators",
         "./submodules/isd_scripts",
