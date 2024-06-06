@@ -1,7 +1,8 @@
+import argparse
 import os
 from dataclasses import replace
 from enum import IntEnum
-from typing import Sequence
+from typing import Optional, Sequence
 
 from isdleda.utils.common import Value
 from isdleda.utils.export.export import (load_from_pickle, save_to_pickle,
@@ -51,13 +52,38 @@ def _store_formula(out: OutType, res):
         raise AttributeError("Unknown out type %s" % out)
 
 
-def main():
+def parse_arguments():
+    parser = argparse.ArgumentParser("Launch Lee-Brickell")
+    parser.add_argument("--skip-existing",
+                        action="store_true",
+                        help="Skip quantum complexity files if existing")
+    parser.add_argument("--out-format", choices=["txt", "bin"], default="bin")
+    parser.add_argument(
+        "--formula-only",
+        action="store_true",
+        help="Just store the formula without computing the actual values",
+    )
+    return parser
+
+
+def main(raw_args: Optional[list[str]] = None):
+    print("#" * 80)
+    parser = parse_arguments()
+    if raw_args and len(raw_args) != 0:
+        namespace = parser.parse_args(raw_args)
+    else:
+        namespace = parser.parse_args()
+    print(namespace)
     pickle_file = OUT_FILES_QLB_SYMBOLIC.format(out_type="pkl")
     if not os.path.isfile(pickle_file):
         res = _get_formula()
         _store_formula(OutType.PKL, res)
     else:
         res = load_from_pickle(pickle_file)
+
+    if namespace.formula_only:
+        print(res)
+        return
 
     isd_values: Sequence[Value] = load_from_pickle(ISD_VALUES_FILE_PKL)
     for value in isd_values:
@@ -71,14 +97,26 @@ def main():
             t_o: REAL_FIELD(value.t),
         }
         for p in range(1, 4):
+            out_file = OUT_FILES_QLB_FMT.format(
+                out_type='bin',
+                n=value.n,
+                r=value.r,
+                t=value.t,
+                p=p,
+                ext='.pkl',
+            )
+            if namespace.skip_existing and os.path.isfile(out_file):
+                continue
             var_subs[p_o] = REAL_FIELD(p)
 
-            print(var_subs)
-
-            normal2 = replace_exp_valuedict(
-                res.normal2,  # lsp: ignore
-                var_subs,
-                numerical=True)
+            # All the following value dicts are present, so if conditions are
+            # not really necessary, but still they are in theory possibly None, and
+            # lsp complains
+            if not (res.normal2 and res.normal_expanded2 and res.tmeas2):
+                raise Exception("Wrong state")
+            normal2 = replace_exp_valuedict(res.normal2,
+                                            var_subs,
+                                            numerical=True)
             normal_expanded2 = replace_exp_valuedict(res.normal_expanded2,
                                                      var_subs,
                                                      numerical=True)
@@ -93,14 +131,6 @@ def main():
                 normal=None,
                 normal_expanded=None,
                 tmeas=None,
-            )
-            out_file = OUT_FILES_QLB_FMT.format(
-                out_type='bin',
-                n=value.n,
-                r=value.r,
-                t=value.t,
-                p=p,
-                ext='.pkl',
             )
             save_to_pickle(out_file, res2)
 
