@@ -48,6 +48,11 @@ def parse_arguments():
                         required=True,
                         type=_check_positive,
                         help="Multiprocess pool size")
+    parser.add_argument('-t',
+                        '--max_tasks',
+                        required=True,
+                        type=_check_positive,
+                        help="Multiprocess max tasks per child")
     parser.add_argument('--chunksize',
                         type=_check_positive,
                         default=2,
@@ -209,7 +214,7 @@ def main(raw_args: Optional[list[str]] = None):
         return
 
     #
-    with Pool(namespace.poolsize, maxtasksperchild=2000) as p:
+    with Pool(namespace.poolsize, maxtasksperchild=namespace.max_tasks) as p:
         # frp.map_async(
         for i, result in enumerate(
                 p.imap_unordered(
