@@ -86,7 +86,10 @@ def main(raw_args: Optional[list[str]] = None):
         return
 
     isd_values: Sequence[Value] = load_from_pickle(ISD_VALUES_FILE_PKL)
-    for value in isd_values:
+    p_range = range(1, 4)
+    tot = len(isd_values) * len(p_range)
+
+    for i, value in enumerate(isd_values):
         n_o, k_o, t_o, r_o, p_o = var("n_o, k_o, t_o, r_o, p_o",
                                       domain="integer")
         assume(n_o > 0, k_o > 0, t_o > 0, r_o > 0, p_o > 0)
@@ -96,7 +99,7 @@ def main(raw_args: Optional[list[str]] = None):
             r_o: REAL_FIELD(value.r),
             t_o: REAL_FIELD(value.t),
         }
-        for p in range(1, 4):
+        for p in p_range:
             out_file = OUT_FILES_QLB_FMT.format(
                 out_type='bin',
                 n=value.n,
@@ -133,6 +136,9 @@ def main(raw_args: Optional[list[str]] = None):
                 tmeas=None,
             )
             save_to_pickle(out_file, res2)
+        print(
+            f"done {(i+1) * len(p_range)}/{tot} -> {(i+1)*len(p_range)/tot:%}",
+            end='\r')
 
 
 if __name__ == '__main__':
