@@ -19,6 +19,7 @@ class Value:
     prime: Optional[int] = field(default=None, compare=False)
     n0: Optional[int] = field(default=None, compare=False)
     v: Optional[int] = field(default=None, compare=False)
+    lambd: Optional[int] = field(default=None, compare=False)
 
     # def __post_init__(self):
     #     self.k = self.n - self.r

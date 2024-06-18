@@ -59,7 +59,8 @@ def main():
                               t=2 * v,
                               prime=prime,
                               n0=n0,
-                              v=v)
+                              v=v,
+                              lambd=lam)
                 values.add(value)
 
                 # key recovery 2 (2p, p, 2v)
@@ -69,7 +70,8 @@ def main():
                                   t=2 * v,
                                   prime=prime,
                                   n0=n0,
-                                  v=v)
+                                  v=v,
+                                  lambd=lam)
                     values.add(value)
 
                 # key recovery 3 (n0*p, (n0-1)*p, n0*v
@@ -78,7 +80,8 @@ def main():
                               t=2 * v,
                               prime=prime,
                               n0=n0,
-                              v=v)
+                              v=v,
+                              lambd=lam)
                 values.add(value)
                 # classical = min(kr1, kr2, kr3)
                 # for p in range(1, 4):
@@ -97,7 +100,8 @@ def main():
                               t=t,
                               prime=prime,
                               n0=n0,
-                              v=None)
+                              v=None,
+                              lambd=lam)
                 values.add(value)
                 # for p in range(1, 4):
                 #     # quantum msg recovery p*n0, p, t
