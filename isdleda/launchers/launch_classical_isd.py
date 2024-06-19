@@ -42,15 +42,13 @@ def parse_arguments():
             raise Exception("{} is not an integer".format(value))
         return value
 
-    parser = argparse.ArgumentParser("Launch Lee-Brickell")
+    parser = argparse.ArgumentParser("Launch Classical ISD estimator")
     parser.add_argument('-p',
                         '--poolsize',
                         required=True,
                         type=_check_positive,
                         help="Multiprocess pool size")
-    parser.add_argument('-t',
-                        '--max_tasks',
-                        required=True,
+    parser.add_argument('--max_tasks',
                         type=_check_positive,
                         help="Multiprocess max tasks per child")
     parser.add_argument('--chunksize',
@@ -83,6 +81,7 @@ def _factorial_cached(n: int):
     return factorial(n)
 
 
+# @functools.lru_cache(maxsize=262144)
 @functools.cache
 def _gaussian_elimination_complexity_cached(n: int, k: int, r: int):
     if r != 0:
@@ -91,37 +90,60 @@ def _gaussian_elimination_complexity_cached(n: int, k: int, r: int):
     return (n - k)**2
 
 
-def isd_compute(arg):
-    value, skip_existing = arg
-    # excluded_algorithms_by_default = [BJMMd2, BJMMd3, MayOzerovD2, MayOzerovD3]
-    skip_algos = [
-        BJMM, BallCollision, BJMMdw, BJMMpdw, BJMMplus, BothMay, MayOzerov
-    ]
-    # skip_algos, memory_access, out_file
-    # SDEstimator requires n,k,t as params
-    val = 0
-
-    # The idea is that Prange is not influenced much by the memory
-    # cost, so we can compute them only once
-    prange = None
-    for (mem_access, additional_skip) in (
-        (MemAccess.MEM_CONST, ()),
-        (MemAccess.MEM_LOG, (Prange, )),
-        (MemAccess.MEM_SQRT, (Prange, )),
-        (MemAccess.MEM_CBRT, (Prange, )),
+def _process_value(value):
+    to_skip = True
+    for mem_access in (
+            MemAccess.MEM_CONST,
+            MemAccess.MEM_LOG,
+            MemAccess.MEM_SQRT,
+            MemAccess.MEM_CBRT,
     ):
-
         out_file = OUT_FILES_CLASSICAL_FMT.format(memaccess=mem_access.name,
                                                   out_type='pkl',
                                                   n=value.n,
                                                   r=value.r,
                                                   t=value.t,
                                                   ext='pkl')
-        if skip_existing and os.path.isfile(out_file):
-            val += 1
+        if to_skip and os.path.isfile(out_file):
             LOGGER.info(f"{out_file} already existing, skipping")
             continue
-        t0 = time.perf_counter()
+        else:
+            to_skip = False
+    return not to_skip
+
+
+def _get_no_of_files():
+    # TODO remove hardcoded dir
+    total = 0
+    # for root, dirs, files in os.walk("out/cisd"):
+    for _, _, files in os.walk("out/cisd"):
+        total += len(files)
+    return total
+
+
+def isd_compute(arg):
+    value = arg
+    # excluded_algorithms_by_default = [BJMMd2, BJMMd3, MayOzerovD2, MayOzerovD3]
+    skip_algos = [
+        BJMM, BallCollision, BJMMdw, BJMMpdw, BJMMplus, BothMay, MayOzerov
+    ]
+
+    # The idea is that Prange is not influenced much by the memory
+    # cost, so we can compute it only once
+    prange = None
+    t0 = time.perf_counter()
+    for (mem_access, additional_skip) in (
+        (MemAccess.MEM_CONST, ()),
+        (MemAccess.MEM_LOG, (Prange, )),
+        (MemAccess.MEM_SQRT, (Prange, )),
+        (MemAccess.MEM_CBRT, (Prange, )),
+    ):
+        out_file = OUT_FILES_CLASSICAL_FMT.format(memaccess=mem_access.name,
+                                                  out_type='pkl',
+                                                  n=value.n,
+                                                  r=value.r,
+                                                  t=value.t,
+                                                  ext='pkl')
         sd = SDEstimator(value.n,
                          value.n - value.r,
                          value.t,
@@ -129,13 +151,12 @@ def isd_compute(arg):
                          list(additional_skip),
                          memory_access=mem_access.value)
         results = sd.estimate()
-        te = time.perf_counter()
         if mem_access == MemAccess.MEM_CONST:
             prange = results['Prange']
         else:
             if prange is None:
                 # prange was not computed bcz the file was already present
-                LOGGER.info("Computing Prange for MEM_CONST")
+                # LOGGER.info("Computing Prange for MEM_CONST")
                 _sd = SDEstimator(
                     value.n,
                     value.n - value.r,
@@ -146,15 +167,12 @@ def isd_compute(arg):
                 _results = _sd.estimate()
                 prange = _results['Prange']
                 results['Prange'] = prange
-                val -= 1
         min_time = min(results.items(),
                        key=lambda algo: algo[1]['estimate']['time'])
 
         save_to_pickle(out_file, min_time)
-        LOGGER.info(
-            f"Computed {value}, MEM: {mem_access.name}, real time: {te - t0} seconds"
-        )
-    return val
+    te = time.perf_counter()
+    return (value, te - t0)
 
 
 def main(raw_args: Optional[list[str]] = None):
@@ -190,7 +208,7 @@ def main(raw_args: Optional[list[str]] = None):
     if namespace.cache_comb:
         math.factorial = _factorial_cached
 
-    # TODO improve; maybe this is the best solution after all, since the value
+    # Maybe global is the best solution after all, since the value
     # is initialized once and only accessed from processes. Note that each
     # process will have its own copy of global variable.
     # global SKIP_EXISTING
@@ -205,27 +223,36 @@ def main(raw_args: Optional[list[str]] = None):
     LOGGER.info(f"Total points to compute (estimate): {tot}")
     LOGGER.info(f"Skip existing is: {namespace.skip_existing}")
 
+    if namespace.skip_existing:
+        to_process_no = tot - _get_no_of_files()
+        to_process_list = filter(_process_value, isd_values)
+    else:
+        to_process_no = tot
+        to_process_list = isd_values
+
     if namespace.poolsize == 1:
-        for i, value in enumerate(isd_values):
-            result = isd_compute((value, namespace.skip_existing))
-            tot -= result
-            print(f"done {i+1}/{tot} -> {(i+1)/tot:%}", end='\r')
-            # print(f"done {i+1}/{tot} -> {(i+1)/tot:%}")
+        for i, value in enumerate(to_process_list):
+            isd_compute(value)
+            print(
+                f"done {(i+1)*4}/{to_process_no} (out of {tot}) -> {(i+1) * 4 /to_process_no:%} ({(i+1) * 4 /tot:%})",
+                end='\r')
         return
 
-    #
     with Pool(namespace.poolsize, maxtasksperchild=namespace.max_tasks) as p:
-        # frp.map_async(
         for i, result in enumerate(
                 p.imap_unordered(
                     isd_compute,
                     # itertools.product(isd_values, MemAccess),
-                    tuple((value, namespace.skip_existing) for value in isd_values),
+                    # tuple((value, namespace.skip_existing) for value in filter(_process_value, isd_values)),
+                    to_process_list,
                     chunksize=namespace.chunksize,
                 )):
-            tot -= result
-            print(f"done {i+1}/{tot} -> {(i+1)/tot:%}", end='\r')
-            # print(f"done {i+1}/{tot} -> {(i+1)/tot:%}")
+            value, time = result
+            # * 4 is to model the 4 memory costs
+            print(
+                f"done {(i+1)*4}/{to_process_no} (out of {tot}) -> {(i+1) * 4 /to_process_no:%} ({(i+1) * 4 /tot:%})",
+                end='\r')
+            LOGGER.info(f"Computed {value}, real time: {time} seconds")
 
     print(f"Used: {namespace.poolsize} processes ")
     print(f"ISD values no: {len(isd_values)} processes ")
