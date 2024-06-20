@@ -129,7 +129,7 @@ def isd_compute(arg):
     ]
 
     # The idea is that Prange is not influenced much by the memory
-    # cost, so we can compute it only once
+    # cost, so we can compute it only once, and reuse the results later
     prange = None
     t0 = time.perf_counter()
     for (mem_access, additional_skip) in (
@@ -148,7 +148,7 @@ def isd_compute(arg):
                          value.n - value.r,
                          value.t,
                          excluded_algorithms=skip_algos +
-                         list(additional_skip),
+                         list(additional_skip) + SDEstimator.excluded_algorithms_by_default,
                          memory_access=mem_access.value)
         results = sd.estimate()
         if mem_access == MemAccess.MEM_CONST:
