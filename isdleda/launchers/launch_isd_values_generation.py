@@ -77,7 +77,7 @@ def main():
                 # key recovery 3 (n0*p, (n0-1)*p, n0*v
                 value = Value(n=prime * n0,
                               r=prime * (n0 - 1),
-                              t=2 * v,
+                              t=n0 * v,
                               prime=prime,
                               n0=n0,
                               v=v,
