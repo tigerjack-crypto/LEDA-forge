@@ -4,6 +4,7 @@ import itertools
 import logging
 import os
 import time
+from datetime import datetime
 from enum import IntEnum
 from multiprocessing import Pool
 from typing import Optional, Sequence
@@ -92,7 +93,6 @@ def _group_by_n_k(values):
 
 
 def _get_no_of_files():
-    # TODO remove hardcoded dir
     total = 0
     # for root, dirs, files in os.walk("out/cisd"):
     for _, _, files in os.walk(OUT_FILES_CLASSICAL_TYPE_DIR):
@@ -210,30 +210,33 @@ def main(raw_args: Optional[list[str]] = None):
     to_process_group_nr = _group_by_n_k(to_process_list)
 
     acc = 0
+    t0 = datetime.now()
+    print(f"Starting processing at {t0}")
     if namespace.poolsize == 1:
         for _, value in enumerate(to_process_group_nr.values()):
-            values, computations, time = isd_compute(value)
+            values, computations, _ = isd_compute(value)
             acc += computations
             print(
                 f"done {acc}/{to_process_no} (out of {tot}) -> {acc /to_process_no:%} ({acc /tot:%})",
                 end='\r')
-        return
+    else:
+        with Pool(namespace.poolsize,
+                  maxtasksperchild=namespace.max_tasks) as p:
+            for _, result in enumerate(
+                    p.imap_unordered(
+                        isd_compute,
+                        to_process_group_nr.values(),
+                        chunksize=namespace.chunksize,
+                    )):
+                values, computations, time = result
+                acc += computations
+                print(
+                    f"done {acc}/{to_process_no} (out of {tot}) -> {acc /to_process_no:%} ({acc /tot:%})",
+                    end='\r')
+                LOGGER.info(f"Computed {values}, real time: {time} seconds")
 
-    with Pool(namespace.poolsize, maxtasksperchild=namespace.max_tasks) as p:
-        for _, result in enumerate(
-                p.imap_unordered(
-                    isd_compute,
-                    to_process_group_nr.values(),
-                    chunksize=namespace.chunksize,
-                )):
-            values, computations, time = result
-            acc += computations
-            # * 4 is to model the 4 memory costs
-            print(
-                f"done {acc}/{to_process_no} (out of {tot}) -> {acc /to_process_no:%} ({acc /tot:%})",
-                end='\r')
-            LOGGER.info(f"Computed {values}, real time: {time} seconds")
-
+    te = datetime.now()
+    print(f"Ending processing at {te}")
     print(f"Used: {namespace.poolsize} processes ")
     print(f"ISD values no: {len(isd_values)} processes ")
 
