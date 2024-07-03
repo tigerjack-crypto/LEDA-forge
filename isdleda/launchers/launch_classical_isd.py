@@ -1,12 +1,10 @@
 import argparse
-import functools
+import collections
 import itertools
 import logging
-import math
 import os
 import time
 from enum import IntEnum
-from math import comb, factorial
 from multiprocessing import Pool
 from typing import Optional, Sequence
 
@@ -14,8 +12,7 @@ from typing import Optional, Sequence
 from cryptographic_estimators.SDEstimator import (BJMM, BallCollision, BJMMdw,
                                                   BJMMpdw, BJMMplus, BothMay,
                                                   Dumer, MayOzerov, Prange,
-                                                  SDEstimator, Stern,
-                                                  sd_helper)
+                                                  SDEstimator, Stern)
 from isdleda.utils.common import Value
 from isdleda.utils.export.export import load_from_pickle, save_to_pickle
 from isdleda.utils.paths import ISD_VALUES_FILE_PKL, OUT_FILES_CLASSICAL_FMT
@@ -48,7 +45,7 @@ def parse_arguments():
                         required=True,
                         type=_check_positive,
                         help="Multiprocess pool size")
-    parser.add_argument('--max_tasks',
+    parser.add_argument('--max-tasks',
                         type=_check_positive,
                         help="Multiprocess max tasks per child")
     parser.add_argument('--chunksize',
@@ -59,35 +56,7 @@ def parse_arguments():
                         action="store_true",
                         help="Skip quantum complexity files if existing")
     parser.add_argument("--out-format", choices=["txt", "bin"], default="bin")
-    parser.add_argument("--cache-gje", action="store_true")
-    parser.add_argument("--cache-comb", action="store_true")
-    parser.add_argument("--cache-factorial", action="store_true")
     return parser
-
-
-@functools.cache
-def _comb_cached(n: int, k: int):
-    """
-    binomial coefficient
-    """
-    return comb(n, k)
-
-
-@functools.cache
-def _factorial_cached(n: int):
-    """
-    binomial coefficient
-    """
-    return factorial(n)
-
-
-# @functools.lru_cache(maxsize=262144)
-@functools.cache
-def _gaussian_elimination_complexity_cached(n: int, k: int, r: int):
-    if r != 0:
-        return (r**2 + 2**r + (n - k - r)) * int(((n + r - 1) / r))
-
-    return (n - k)**2
 
 
 def _process_value(value):
@@ -112,67 +81,80 @@ def _process_value(value):
     return not to_skip
 
 
+def _group_by_n_k(values):
+    values_dict = collections.defaultdict(list)
+    for value in values:
+        key = hash(str(value.n) + '|' + str(value.r))
+        values_dict[key].append(value)
+    LOGGER.info("Finished grouping by n and r")
+    return values_dict
+
+
 def _get_no_of_files():
     # TODO remove hardcoded dir
     total = 0
     # for root, dirs, files in os.walk("out/cisd"):
-    for _, _, files in os.walk("out/cisd"):
+    for _, _, files in os.walk("out/cisd/pkl"):
         total += len(files)
     return total
 
 
 def isd_compute(arg):
-    value = arg
+    # should be a list of values having same n and r
     # excluded_algorithms_by_default = [BJMMd2, BJMMd3, MayOzerovD2, MayOzerovD3]
+    values_grouped = arg
     skip_algos = [
         BJMM, BallCollision, BJMMdw, BJMMpdw, BJMMplus, BothMay, MayOzerov
-    ]
-
-    # The idea is that Prange is not influenced much by the memory
-    # cost, so we can compute it only once, and reuse the results later
-    prange = None
+    ] + SDEstimator.excluded_algorithms_by_default
+    # skip_algos = SDEstimator.excluded_algorithms_by_default
     t0 = time.perf_counter()
-    for (mem_access, additional_skip) in (
-        (MemAccess.MEM_CONST, ()),
-        (MemAccess.MEM_LOG, (Prange, )),
-        (MemAccess.MEM_SQRT, (Prange, )),
-        (MemAccess.MEM_CBRT, (Prange, )),
-    ):
-        out_file = OUT_FILES_CLASSICAL_FMT.format(memaccess=mem_access.name,
-                                                  out_type='pkl',
-                                                  n=value.n,
-                                                  r=value.r,
-                                                  t=value.t,
-                                                  ext='pkl')
-        sd = SDEstimator(value.n,
-                         value.n - value.r,
-                         value.t,
-                         excluded_algorithms=skip_algos +
-                         list(additional_skip) + SDEstimator.excluded_algorithms_by_default,
-                         memory_access=mem_access.value)
-        results = sd.estimate()
-        if mem_access == MemAccess.MEM_CONST:
-            prange = results['Prange']
-        else:
-            if prange is None:
-                # prange was not computed bcz the file was already present
-                # LOGGER.info("Computing Prange for MEM_CONST")
-                _sd = SDEstimator(
-                    value.n,
-                    value.n - value.r,
-                    value.t,
-                    # Should execute only Prange
-                    excluded_algorithms=skip_algos + [Stern, Dumer],
-                    memory_access=MemAccess.MEM_CONST)
-                _results = _sd.estimate()
-                prange = _results['Prange']
-                results['Prange'] = prange
-        min_time = min(results.items(),
-                       key=lambda algo: algo[1]['estimate']['time'])
-
-        save_to_pickle(out_file, min_time)
+    for value in values_grouped:
+        # The idea is that Prange is not influenced much by the memory
+        # cost, so we can compute it only once, and reuse the results later
+        prange = None
+        for (mem_access, additional_skip) in (
+            (MemAccess.MEM_CONST, ()),
+            (MemAccess.MEM_LOG, (Prange, )),
+            (MemAccess.MEM_SQRT, (Prange, )),
+            (MemAccess.MEM_CBRT, (Prange, )),
+        ):
+            out_file = OUT_FILES_CLASSICAL_FMT.format(
+                memaccess=mem_access.name,
+                out_type='pkl',
+                n=value.n,
+                r=value.r,
+                t=value.t,
+                ext='pkl')
+            sd = SDEstimator(value.n,
+                             value.n - value.r,
+                             value.t,
+                             excluded_algorithms=skip_algos +
+                             list(additional_skip),
+                             memory_access=mem_access.value)
+            results = sd.estimate()
+            if mem_access == MemAccess.MEM_CONST:
+                prange = results['Prange']
+            else:
+                if prange is None:
+                    # prange was not computed bcz the file was already present
+                    # LOGGER.info("Computing Prange for MEM_CONST")
+                    _sd = SDEstimator(
+                        value.n,
+                        value.n - value.r,
+                        value.t,
+                        # Should execute only Prange
+                        excluded_algorithms=skip_algos + [Stern, Dumer],
+                        memory_access=MemAccess.MEM_CONST)
+                    _results = _sd.estimate()
+                    prange = _results['Prange']
+                    results['Prange'] = prange
+            min_time = min(results.items(),
+                           key=lambda algo: algo[1]['estimate']['time'])
+            results['MinimumTime'] = min_time
+            save_to_pickle(out_file, results)
+            # save_to_pickle(out_file, min_time)
     te = time.perf_counter()
-    return (value, te - t0)
+    return (values_grouped, len(values_grouped) * 4, te - t0)
 
 
 def main(raw_args: Optional[list[str]] = None):
@@ -201,13 +183,6 @@ def main(raw_args: Optional[list[str]] = None):
     print(namespace)
     print("#" * 80)
 
-    if namespace.cache_gje:
-        sd_helper._gaussian_elimination_complexity = _gaussian_elimination_complexity_cached
-    if namespace.cache_comb:
-        math.comb = _comb_cached
-    if namespace.cache_comb:
-        math.factorial = _factorial_cached
-
     # Maybe global is the best solution after all, since the value
     # is initialized once and only accessed from processes. Note that each
     # process will have its own copy of global variable.
@@ -229,30 +204,34 @@ def main(raw_args: Optional[list[str]] = None):
     else:
         to_process_no = tot
         to_process_list = isd_values
+    # all values grouped by n and r. It improves performance bcz m4ri is
+    # computed only taking into account n and n-k (that is, r).
+    to_process_group_nr = _group_by_n_k(to_process_list)
 
+    acc = 0
     if namespace.poolsize == 1:
-        for i, value in enumerate(to_process_list):
-            isd_compute(value)
+        for _, value in enumerate(to_process_group_nr.values()):
+            values, computations, time = isd_compute(value)
+            acc += computations
             print(
-                f"done {(i+1)*4}/{to_process_no} (out of {tot}) -> {(i+1) * 4 /to_process_no:%} ({(i+1) * 4 /tot:%})",
+                f"done {acc}/{to_process_no} (out of {tot}) -> {acc /to_process_no:%} ({acc /tot:%})",
                 end='\r')
         return
 
     with Pool(namespace.poolsize, maxtasksperchild=namespace.max_tasks) as p:
-        for i, result in enumerate(
+        for _, result in enumerate(
                 p.imap_unordered(
                     isd_compute,
-                    # itertools.product(isd_values, MemAccess),
-                    # tuple((value, namespace.skip_existing) for value in filter(_process_value, isd_values)),
-                    to_process_list,
+                    to_process_group_nr.values(),
                     chunksize=namespace.chunksize,
                 )):
-            value, time = result
+            values, computations, time = result
+            acc += computations
             # * 4 is to model the 4 memory costs
             print(
-                f"done {(i+1)*4}/{to_process_no} (out of {tot}) -> {(i+1) * 4 /to_process_no:%} ({(i+1) * 4 /tot:%})",
+                f"done {acc}/{to_process_no} (out of {tot}) -> {acc /to_process_no:%} ({acc /tot:%})",
                 end='\r')
-            LOGGER.info(f"Computed {value}, real time: {time} seconds")
+            LOGGER.info(f"Computed {values}, real time: {time} seconds")
 
     print(f"Used: {namespace.poolsize} processes ")
     print(f"ISD values no: {len(isd_values)} processes ")
