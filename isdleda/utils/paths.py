@@ -25,6 +25,7 @@ OUT_FILES_QLB_FMT: str = os.path.join(OUT_FILES_QLB_DIR,
                                       OUT_FILES_QLB_PART_FMT)
 OUT_FILES_QLB_SYMBOLIC: str = os.path.join(OUT_FILES_QLB_DIR, "0_symbolic")
 
+OUT_FILES_CLASSICAL_TYPE_DIR: str = os.path.join(".", "out", "cisd", "{out_type}")
 OUT_FILES_CLASSICAL_DIR: str = os.path.join(".", "out", "cisd", "{out_type}",
                                             "{memaccess}")
 OUT_FILES_CLASSICAL_FMT: str = os.path.join(OUT_FILES_CLASSICAL_DIR,

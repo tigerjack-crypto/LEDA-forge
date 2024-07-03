@@ -15,7 +15,8 @@ from cryptographic_estimators.SDEstimator import (BJMM, BallCollision, BJMMdw,
                                                   SDEstimator, Stern)
 from isdleda.utils.common import Value
 from isdleda.utils.export.export import load_from_pickle, save_to_pickle
-from isdleda.utils.paths import ISD_VALUES_FILE_PKL, OUT_FILES_CLASSICAL_FMT
+from isdleda.utils.paths import (ISD_VALUES_FILE_PKL, OUT_FILES_CLASSICAL_FMT,
+                                 OUT_FILES_CLASSICAL_TYPE_DIR)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -94,7 +95,7 @@ def _get_no_of_files():
     # TODO remove hardcoded dir
     total = 0
     # for root, dirs, files in os.walk("out/cisd"):
-    for _, _, files in os.walk("out/cisd/pkl"):
+    for _, _, files in os.walk(OUT_FILES_CLASSICAL_TYPE_DIR):
         total += len(files)
     return total
 
