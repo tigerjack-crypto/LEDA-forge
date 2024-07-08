@@ -14,8 +14,8 @@ from typing import Optional, Sequence
 # BallCollision, BJMM, BJMMdw, BJMMpdw, BJMMplus, BothMay, Dumer, MayOzerov, Prange, Stern
 from cryptographic_estimators.SDEstimator import (BJMM, BallCollision, BJMMdw,
                                                   BJMMpdw, BJMMplus, BothMay,
-                                                  Dumer, MayOzerov, Prange,
-                                                  SDEstimator, Stern)
+                                                  MayOzerov, Prange,
+                                                  SDEstimator)
 from isdleda.utils.common import Value
 from isdleda.utils.export.export import load_from_pickle, save_to_pickle
 from isdleda.utils.paths import (ISD_VALUES_FILE_PKL, OUT_FILES_CLASSICAL_FMT,
@@ -79,9 +79,10 @@ def _process_value(value):
                                                   ext='pkl')
         if to_skip and os.path.isfile(out_file):
             LOGGER.info(f"{out_file} already existing, skipping")
-            continue
+            # continue
         else:
             to_skip = False
+            break
     return not to_skip
 
 
@@ -94,11 +95,13 @@ def _group_by_n_k(values):
     return values_dict
 
 
-def _get_no_of_files():
+def _get_no_of_files(out_format):
     total = 0
     # for root, dirs, files in os.walk("out/cisd"):
-    for _, _, files in os.walk(OUT_FILES_CLASSICAL_TYPE_DIR):
+    search_dir = OUT_FILES_CLASSICAL_TYPE_DIR.format(out_type = out_format)
+    for _, _, files in os.walk(search_dir):
         total += len(files)
+    LOGGER.info(f"No. of files already existing for {search_dir}: {total}")
     return total
 
 
@@ -106,6 +109,7 @@ def isd_compute(arg):
     # should be a list of values having same n and r
     # excluded_algorithms_by_default = [BJMMd2, BJMMd3, MayOzerovD2, MayOzerovD3]
     values_grouped = arg
+    LOGGER.info(f"Computing {values_grouped}")
     skip_algos = [
         BJMM, BallCollision, BJMMdw, BJMMpdw, BJMMplus, BothMay, MayOzerov
     ] + SDEstimator.excluded_algorithms_by_default
@@ -114,9 +118,9 @@ def isd_compute(arg):
     for value in values_grouped:
         # The idea is that Prange is not influenced much by the memory
         # cost, so we can compute it only once, and reuse the results later
-        prange = None
+        # prange = None
         for (mem_access, additional_skip) in (
-            (MemAccess.MEM_CONST, ()),
+            (MemAccess.MEM_CONST, (Prange, )),
             (MemAccess.MEM_LOG, (Prange, )),
             (MemAccess.MEM_SQRT, (Prange, )),
             (MemAccess.MEM_CBRT, (Prange, )),
@@ -135,22 +139,24 @@ def isd_compute(arg):
                              list(additional_skip),
                              memory_access=mem_access.value)
             results = sd.estimate()
-            if mem_access == MemAccess.MEM_CONST:
-                prange = results['Prange']
-            else:
-                if prange is None:
-                    # prange was not computed bcz the file was already present
-                    # LOGGER.info("Computing Prange for MEM_CONST")
-                    _sd = SDEstimator(
-                        value.n,
-                        value.n - value.r,
-                        value.t,
-                        # Should execute only Prange
-                        excluded_algorithms=skip_algos + [Stern, Dumer],
-                        memory_access=MemAccess.MEM_CONST)
-                    _results = _sd.estimate()
-                    prange = _results['Prange']
-                    results['Prange'] = prange
+            # This was used when Prange was still in the game
+            # if mem_access == MemAccess.MEM_CONST:
+            #     prange = results['Prange']
+            # else:
+            #     if prange is None:
+            #         # prange was not computed (bcz the file was already present).
+            #         # We compute only prange here and store 
+            #         LOGGER.info("Computing Prange for MEM_CONST")
+            #         _sd = SDEstimator(
+            #             value.n,
+            #             value.n - value.r,
+            #             value.t,
+            #             # Should execute only Prange
+            #             excluded_algorithms=skip_algos + [Stern, Dumer],
+            #             memory_access=MemAccess.MEM_CONST)
+            #         _results = _sd.estimate()
+            #         prange = results['Prange']
+            #         results['Prange'] = prange
             min_time = min(results.items(),
                            key=lambda algo: algo[1]['estimate']['time'])
             results['MinimumTime'] = min_time
@@ -183,14 +189,10 @@ def main(raw_args: Optional[list[str]] = None):
         namespace = parser.parse_args(raw_args)
     else:
         namespace = parser.parse_args()
-    print(namespace)
-    print("#" * 80)
-
-    # Maybe global is the best solution after all, since the value
-    # is initialized once and only accessed from processes. Note that each
-    # process will have its own copy of global variable.
-    # global SKIP_EXISTING
-    # SKIP_EXISTING = namespace.skip_existing
+    LOGGER.info(namespace)
+    LOGGER.info("#" * 80)
+    t0 = datetime.now()
+    LOGGER.info(f"Starting data filtering at {t0}")
 
     isd_values: Sequence[Value] = load_from_pickle(ISD_VALUES_FILE_PKL)
 
@@ -202,7 +204,7 @@ def main(raw_args: Optional[list[str]] = None):
     LOGGER.info(f"Skip existing is: {namespace.skip_existing}")
 
     if namespace.skip_existing:
-        to_process_no = tot - _get_no_of_files()
+        to_process_no = tot - _get_no_of_files('pkl' if namespace.out_format == 'bin' else namespace.out_format)
         to_process_list = filter(_process_value, isd_values)
     else:
         to_process_no = tot
@@ -210,10 +212,11 @@ def main(raw_args: Optional[list[str]] = None):
     # all values grouped by n and r. It improves performance bcz m4ri is
     # computed only taking into account n and n-k (that is, r).
     to_process_group_nr = _group_by_n_k(to_process_list)
+    del to_process_list
 
     acc = 0
     t0 = datetime.now()
-    print(f"Starting processing at {t0}")
+    LOGGER.info(f"Starting processing at {t0}")
     if namespace.poolsize == 1:
         for _, value in enumerate(to_process_group_nr.values()):
             values, computations, _ = isd_compute(value)
@@ -238,9 +241,9 @@ def main(raw_args: Optional[list[str]] = None):
                 LOGGER.info(f"Computed {values}, real time: {time} seconds")
 
     te = datetime.now()
-    print(f"Ending processing at {te}")
-    print(f"Used: {namespace.poolsize} processes ")
-    print(f"ISD values no: {len(isd_values)} processes ")
+    LOGGER.info(f"Ending processing at {te}")
+    LOGGER.info(f"Used: {namespace.poolsize} processes ")
+    LOGGER.info(f"ISD values no: {len(isd_values)} processes ")
 
 
 def test():
