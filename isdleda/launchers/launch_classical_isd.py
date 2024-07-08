@@ -1,3 +1,5 @@
+"""Launch the classical ISD estimator from TII
+"""
 import argparse
 import collections
 import itertools

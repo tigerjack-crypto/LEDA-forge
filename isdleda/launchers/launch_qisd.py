@@ -1,3 +1,5 @@
+"""Compute the computational cost for the quantum ISD
+"""
 import argparse
 import os
 from dataclasses import replace

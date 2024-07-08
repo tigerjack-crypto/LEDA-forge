@@ -1,3 +1,5 @@
+"""Generate the range of useful values for LEDA
+"""
 import csv
 import itertools
 from dataclasses import asdict
