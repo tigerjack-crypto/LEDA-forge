@@ -54,6 +54,9 @@ def main():
             prime_range = filter(
                 lambda p: p >= int(.8 * prime_guess) and p <= int(
                     1.2 * prime_guess), proper_primes)
+            # NOTE the t values here are NOT the t to be used in the parameter
+            # set, but only the equivalent t used to compute the complexity of
+            # the Codeword Finding Problem (CFP)
             for prime in prime_range:
                 # key recovery 1 (n0*p, p, 2*v)
                 value = Value(n=prime * n0,
@@ -88,7 +91,7 @@ def main():
                 # classical = min(kr1, kr2, kr3)
                 # for p in range(1, 4):
                 #     # quantum key recovery 1, 2, 3 as before
-        # MSG recovery
+        # Message recovery, i.e., Syndrome Decoding Problem (SDP)
         for t in range(int(v1 * .8), int(v1 * 1.2)):
             # t = 2v
             prime_guess = (t / 2)**2 * n0
