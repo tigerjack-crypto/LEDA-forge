@@ -17,7 +17,7 @@ import os
 #     from measures.common import ValueDicts  # , Code, SecurityLevels
 
 # Lee-Brickell
-OUT_FILES_QLB_PART_FMT = ("{n:06}_{r:06}_{t:03}_p{p:03}.{ext}")
+OUT_FILES_QLB_PART_FMT = ("{n:06}_{r:06}_{t:03}.{ext}")
 OUT_FILES_CLB_PART_FMT = ("{n:06}_{r:06}_{t:03}.{ext}")
 
 OUT_FILES_QLB_DIR: str = os.path.join(".", "out", "qlb", "{out_type}")
