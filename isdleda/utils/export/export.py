@@ -1,8 +1,8 @@
-import os
 import json
+import os
 import pickle
-from typing import Any
 from pathlib import Path
+from typing import Any
 
 
 def save_to_pickle(filename: str, obj: Any):
@@ -21,8 +21,12 @@ def load_from_pickle(filename: str) -> Any:
 
 
 def save_to_txt(filename: str, obj: Any):
-    os.makedirs(filename[:filename.rfind(os.path.sep)], exist_ok=True)
-    with open(filename + ".txt", "w") as fp:
+    fn = filename + ".txt" if not Path(filename).suffix == ".txt" else filename
+    try:
+        with open(fn, "w") as fp:
+            print(obj, file=fp)
+    except FileNotFoundError:
+        os.makedirs(filename[:filename.rfind(os.path.sep)], exist_ok=True)
         print(obj, file=fp)
 
 
