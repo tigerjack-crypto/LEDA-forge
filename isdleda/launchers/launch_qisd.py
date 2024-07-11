@@ -1,16 +1,22 @@
 """Compute the computational cost for the quantum ISD
 """
 import argparse
+import functools
+import logging
 import os
+import time
 from dataclasses import replace
 from enum import IntEnum
+from multiprocessing import Pool
 from typing import Dict, Optional, Sequence
 
+from isdleda.launchers.launcher_utils import (argparse_check_positive,
+                                              get_no_of_files, init_logger)
 from isdleda.utils.common import Value
-from isdleda.utils.export.export import (load_from_pickle, save_to_json, save_to_pickle,
-                                         save_to_txt)
-from isdleda.utils.paths import (ISD_VALUES_FILE_PKL, OUT_FILES_QLB_FMT,
-                                 OUT_FILES_QLB_SYMBOLIC)
+from isdleda.utils.export.export import (load_from_pickle, save_to_json,
+                                         save_to_pickle, save_to_txt)
+from isdleda.utils.paths import (ISD_VALUES_FILE_PKL, OUT_FILES_QLB_DIR,
+                                 OUT_FILES_QLB_FMT, OUT_FILES_QLB_SYMBOLIC)
 # ISD_scripts
 from measures.common import CodeExtended
 from measures.leebrickell_quantum import LeeBrickellQuantum, ValueDicts
@@ -21,6 +27,7 @@ from utils.datamanipulation import replace_exp_valuedict
 
 REAL_PREC = 1000
 REAL_FIELD = RealField(prec=REAL_PREC)
+LOGGER = logging.getLogger(__name__)
 
 from statics.codes import SecurityLevels
 
@@ -51,16 +58,46 @@ def _store_formula(out: OutType, res):
         save_to_txt(OUT_FILES_QLB_SYMBOLIC.format(out_type="txt"), res)
     elif out == OutType.PKL:
         save_to_pickle(OUT_FILES_QLB_SYMBOLIC.format(out_type="pkl"), res)
-    else:  # 
+    else:  #
         save_to_json(OUT_FILES_QLB_SYMBOLIC.format(out_type="pkl"), res)
 
 
+def _process_value(value, out_type, extension):
+    out_file = OUT_FILES_QLB_FMT.format(
+        out_type=out_type,
+        n=value.n,
+        r=value.r,
+        t=value.t,
+        ext=extension,
+    )
+    if os.path.isfile(out_file):
+        LOGGER.info(f"{out_file} already existing, skipping")
+        return False
+    return True
+
+
 def parse_arguments():
+
     parser = argparse.ArgumentParser("Launch Lee-Brickell")
+    parser.add_argument('-p',
+                        '--poolsize',
+                        required=True,
+                        type=argparse_check_positive,
+                        help="Multiprocess pool size")
+    parser.add_argument('--max-tasks',
+                        type=argparse_check_positive,
+                        help="Multiprocess max tasks per child",
+                        default=1)
+    parser.add_argument('--chunksize',
+                        type=argparse_check_positive,
+                        default=2,
+                        help="Multiprocess chunk size")
     parser.add_argument("--skip-existing",
                         action="store_true",
                         help="Skip quantum complexity files if existing")
-    parser.add_argument("--out-format", choices=["txt", "pkl", "json"], default="pkl")
+    parser.add_argument("--out-format",
+                        choices=["txt", "pkl", "json"],
+                        default="pkl")
     parser.add_argument(
         "--formula-only",
         action="store_true",
@@ -69,17 +106,99 @@ def parse_arguments():
     return parser
 
 
+def isd_compute(value, p_range, formula, out_dir, extension):
+    n_o, k_o, t_o, r_o, p_o = var("n_o, k_o, t_o, r_o, p_o", domain="integer")
+    assume(n_o > 0, k_o > 0, t_o > 0, r_o > 0, p_o > 0)
+    var_subs = {
+        n_o: REAL_FIELD(value.n),
+        k_o: REAL_FIELD(value.n - value.r),
+        r_o: REAL_FIELD(value.r),
+        t_o: REAL_FIELD(value.t),
+    }
+    dic: Dict[str, ValueDicts] = {}
+    t0 = time.perf_counter()
+    for p in p_range:
+        out_file = OUT_FILES_QLB_FMT.format(
+            out_type=out_dir,
+            n=value.n,
+            r=value.r,
+            t=value.t,
+            ext=extension,
+        )
+        var_subs[p_o] = REAL_FIELD(p)
+        # All the following value dicts are present, so if conditions are
+        # not really necessary, but still they are in theory possibly None, and
+        # lsp complains
+        # if not (formula.normal2 and formula.normal_expanded2 and formula.tmeas2):
+        #     raise Exception("Wrong state")
+        normal2 = replace_exp_valuedict(formula.normal2,
+                                        var_subs,
+                                        numerical=True)
+        normal_expanded2 = replace_exp_valuedict(formula.normal_expanded2,
+                                                 var_subs,
+                                                 numerical=True)
+        tmeas2 = replace_exp_valuedict(formula.tmeas2,
+                                       var_subs,
+                                       numerical=True)
+        res2 = replace(
+            formula,
+            in_params={
+                n_o: value.n,
+                k_o: value.n - value.r,
+                r_o: value.r,
+                t_o: value.t,
+                p_o: p
+            },
+            normal2=normal2,
+            normal_expanded2=normal_expanded2,
+            tmeas2=tmeas2,
+            normal=None,
+            normal_expanded=None,
+            tmeas=None,
+        )
+        dic[f"p_{p}"] = res2
+    te = time.perf_counter()
+
+    min_time = min(dic.items(), key=lambda algo: algo[1].tmeas2.t_depth)
+    dic['MinimumDepth'] = min_time[1]
+    if out_dir == 'pkl':
+        save_to_pickle(out_file, dic)
+    elif out_dir == 'txt':
+        save_to_txt(out_file, dic)
+        te = time.perf_counter()
+    # elif namespace.out_format == 'json':
+    #     save_to_json(out_file, dic)
+    return len(p_range), te - t0
+
+
 def main(raw_args: Optional[list[str]] = None):
-    print("#" * 80)
+    init_logger(LOGGER, 'out/qisd.log')
     parser = parse_arguments()
     if raw_args and len(raw_args) != 0:
         namespace = parser.parse_args(raw_args)
     else:
         namespace = parser.parse_args()
     print(namespace)
+
+    LOGGER.info(namespace)
+    LOGGER.info("#" * 80)
+
+    match namespace.out_format:
+        case "txt":
+            out_type_dir = "txt"
+            file_ext = ".txt"
+        case "pkl":
+            out_type_dir = "pkl"
+            file_ext = "pkl"
+        case "json":
+            raise argparse.ArgumentError(None,
+                                         "JSON output not implemented yet")
+        case _:
+            raise argparse.ArgumentError(None, "Invalid output")
     pickle_file = OUT_FILES_QLB_SYMBOLIC.format(out_type="pkl")
     if not os.path.isfile(pickle_file):
         res = _get_formula()
+        # Formula always stored as pkl
         _store_formula(OutType.PKL, res)
     else:
         res = load_from_pickle(pickle_file)
@@ -89,78 +208,60 @@ def main(raw_args: Optional[list[str]] = None):
         print(res)
         return
 
+    # ISD values always stored as pkl
     isd_values: Sequence[Value] = load_from_pickle(ISD_VALUES_FILE_PKL)
     p_range = range(1, 5)
+
     tot = len(isd_values) * len(p_range)
 
-    for i, value in enumerate(isd_values):
-        n_o, k_o, t_o, r_o, p_o = var("n_o, k_o, t_o, r_o, p_o",
-                                      domain="integer")
-        assume(n_o > 0, k_o > 0, t_o > 0, r_o > 0, p_o > 0)
-        var_subs = {
-            n_o: REAL_FIELD(value.n),
-            k_o: REAL_FIELD(value.n - value.r),
-            r_o: REAL_FIELD(value.r),
-            t_o: REAL_FIELD(value.t),
-        }
-        dic: Dict[str, ValueDicts] = {}
-        for p in p_range:
-            out_file = OUT_FILES_QLB_FMT.format(
-                out_type=namespace.out_format,
-                n=value.n,
-                r=value.r,
-                t=value.t,
-                ext=namespace.out_format,
-            )
-            if namespace.skip_existing and os.path.isfile(out_file):
-                continue
-            var_subs[p_o] = REAL_FIELD(p)
-            # var_subs_short = 
-            # All the following value dicts are present, so if conditions are
-            # not really necessary, but still they are in theory possibly None, and
-            # lsp complains
-            if not (res.normal2 and res.normal_expanded2 and res.tmeas2):
-                raise Exception("Wrong state")
-            normal2 = replace_exp_valuedict(res.normal2,
-                                            var_subs,
-                                            numerical=True)
-            normal_expanded2 = replace_exp_valuedict(res.normal_expanded2,
-                                                     var_subs,
-                                                     numerical=True)
-            tmeas2 = replace_exp_valuedict(res.tmeas2,
-                                           var_subs,
-                                           numerical=True)
-            res2 = replace(
-                res,
-                in_params={
-                    n_o: value.n,
-                    k_o: value.n - value.r,
-                    r_o: value.r,
-                    t_o: value.t,
-                    p_o: p
-                }
-,
-                normal2=normal2,
-                normal_expanded2=normal_expanded2,
-                tmeas2=tmeas2,
-                normal=None,
-                normal_expanded=None,
-                tmeas=None,
-            )
-            dic[f"p_{p}"] = res2
+    if namespace.skip_existing:
+        no_of_files = get_no_of_files(
+            OUT_FILES_QLB_DIR,
+            'pkl' if namespace.out_format == 'bin' else namespace.out_format)
+        to_process_no = tot - no_of_files
+        LOGGER.info(f"No. of already existing files: {no_of_files}")
+        filter_fun = functools.partial(_process_value,
+                                       out_type=out_type_dir,
+                                       extension=file_ext)
+        to_process_list = filter(filter_fun, isd_values)
+    else:
+        to_process_no = tot
+        to_process_list = isd_values
 
-        min_time = min(dic.items(), key=lambda algo: algo[1].tmeas2.t_depth)
-        dic['MinimumDepth'] = min_time[1]
-        if namespace.out_format == 'pkl':
-            save_to_pickle(out_file, dic)
-        elif namespace.out_format == 'txt':
-            save_to_txt(out_file, dic)
-        elif namespace.out_format == 'json':
-            save_to_json(out_file, dic)
+    isd_compute_partial = functools.partial(isd_compute,
+                                            p_range=p_range,
+                                            formula=res,
+                                            out_dir=out_type_dir,
+                                            extension=file_ext)
 
-        print(
-            f"done {(i+1) * len(p_range)}/{tot} -> {(i+1)*len(p_range)/tot:%}",
-            end='\r')
+    acc = 0
+    if namespace.poolsize == 1:
+        for _, value in enumerate(to_process_list):
+            computations, _ = isd_compute_partial(value)
+            acc += computations
+            print(
+                f"done {acc}/{to_process_no} (out of {tot}) -> {acc /to_process_no:%} ({acc /tot:%})",
+                end='\r')
+    else:
+        with Pool(namespace.poolsize,
+                  maxtasksperchild=namespace.max_tasks) as p:
+            for _, result in enumerate(
+                    p.imap_unordered(
+                        isd_compute_partial,
+                        to_process_list,
+                        chunksize=namespace.chunksize,
+                    )):
+                computations, _ = result
+                acc += computations
+                print(
+                    f"done {acc}/{to_process_no} (out of {tot}) -> {acc /to_process_no:%} ({acc /tot:%})",
+                    end='\r')
+                # LOGGER.info(
+                #     f"Computed {computations}, real time: {time} seconds")
+
+                print(
+                    f"done {acc}/{to_process_no} (out of {tot}) -> {acc /to_process_no:%} ({acc /tot:%})",
+                    end='\r')
 
 
 if __name__ == '__main__':
