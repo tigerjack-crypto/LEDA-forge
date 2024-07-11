@@ -24,9 +24,12 @@ def get_no_of_files(directory: str, out_format: str):
     return total
 
 
-def init_logger(logger, log_level: Optional[str] = None):
+def init_logger(logger, out_file: str, log_level: Optional[str] = None):
     if not log_level or log_level == "":
         log_level = os.getenv("LOG_LEVEL")
+    if not log_level:
+        # default level
+        log_level = "error"
     print(f"Got level {log_level}")
     # logging_level = logging._nameToLevel.get(log_level, "ERROR")
     logging_level = logging.getLevelName(log_level.upper())
@@ -34,7 +37,7 @@ def init_logger(logger, log_level: Optional[str] = None):
         logging_level = 30  # Warning
     print(f"log level is {logging_level}")
     # handler = logging.StreamHandler()
-    handler = logging.FileHandler('out/cisd.log')
+    handler = logging.FileHandler(out_file)
     formatter = logging.Formatter(
         "%(asctime)s.%(msecs)03d %(module)-4s %(levelname)-5s %(funcName)-12s %(message)s"
     )

@@ -150,7 +150,7 @@ def isd_compute(arg):
 
 def main(raw_args: Optional[list[str]] = None):
     print("#" * 80)
-    init_logger(LOGGER)
+    init_logger(LOGGER, 'out/cisd.log')
     parser = parse_arguments()
     if raw_args and len(raw_args) != 0:
         namespace = parser.parse_args(raw_args)
