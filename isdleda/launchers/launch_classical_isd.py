@@ -16,6 +16,8 @@ from cryptographic_estimators.SDEstimator import (BJMM, BallCollision, BJMMdw,
                                                   BJMMpdw, BJMMplus, BothMay,
                                                   MayOzerov, Prange,
                                                   SDEstimator)
+from isdleda.launchers.launcher_utils import (argparse_check_positive,
+                                              get_no_of_files, init_logger)
 from isdleda.utils.common import Value
 from isdleda.utils.export.export import load_from_pickle, save_to_pickle
 from isdleda.utils.paths import (ISD_VALUES_FILE_PKL, OUT_FILES_CLASSICAL_FMT,
@@ -33,27 +35,17 @@ class MemAccess(IntEnum):
 
 def parse_arguments():
 
-    def _check_positive(value):
-        try:
-            value = int(value)
-            if value <= 0:
-                raise argparse.ArgumentTypeError(
-                    "{} is not a positive integer".format(value))
-        except ValueError:
-            raise Exception("{} is not an integer".format(value))
-        return value
-
     parser = argparse.ArgumentParser("Launch Classical ISD estimator")
     parser.add_argument('-p',
                         '--poolsize',
                         required=True,
-                        type=_check_positive,
+                        type=argparse_check_positive,
                         help="Multiprocess pool size")
     parser.add_argument('--max-tasks',
-                        type=_check_positive,
+                        type=argparse_check_positive,
                         help="Multiprocess max tasks per child")
     parser.add_argument('--chunksize',
-                        type=_check_positive,
+                        type=argparse_check_positive,
                         default=2,
                         help="Multiprocess chunk size")
     parser.add_argument("--skip-existing",
@@ -93,16 +85,6 @@ def _group_by_n_k(values):
         values_dict[key].append(value)
     LOGGER.info("Finished grouping by n and r")
     return values_dict
-
-
-def _get_no_of_files(out_format):
-    total = 0
-    # for root, dirs, files in os.walk("out/cisd"):
-    search_dir = OUT_FILES_CLASSICAL_TYPE_DIR.format(out_type = out_format)
-    for _, _, files in os.walk(search_dir):
-        total += len(files)
-    LOGGER.info(f"No. of files already existing for {search_dir}: {total}")
-    return total
 
 
 def isd_compute(arg):
@@ -145,7 +127,7 @@ def isd_compute(arg):
             # else:
             #     if prange is None:
             #         # prange was not computed (bcz the file was already present).
-            #         # We compute only prange here and store 
+            #         # We compute only prange here and store
             #         LOGGER.info("Computing Prange for MEM_CONST")
             #         _sd = SDEstimator(
             #             value.n,
@@ -168,22 +150,7 @@ def isd_compute(arg):
 
 def main(raw_args: Optional[list[str]] = None):
     print("#" * 80)
-    level = os.getenv("LOG_LEVEL")
-    if level:
-        print(f"Got level {level}")
-        # logging_level = logging._nameToLevel.get(level, "ERROR")
-        logging_level = logging.getLevelName(level.upper())
-        if type(logging_level) != int:
-            logging_level = 30  # Warning
-        print(f"log level is {logging_level}")
-        # handler = logging.StreamHandler()
-        handler = logging.FileHandler('out/cisd.log')
-        formatter = logging.Formatter(
-            "%(asctime)s.%(msecs)03d %(module)-4s %(levelname)-5s %(funcName)-12s %(message)s"
-        )
-        handler.setFormatter(formatter)
-        LOGGER.addHandler(handler)
-        LOGGER.setLevel(logging_level)
+    init_logger(LOGGER)
     parser = parse_arguments()
     if raw_args and len(raw_args) != 0:
         namespace = parser.parse_args(raw_args)
@@ -204,7 +171,11 @@ def main(raw_args: Optional[list[str]] = None):
     LOGGER.info(f"Skip existing is: {namespace.skip_existing}")
 
     if namespace.skip_existing:
-        to_process_no = tot - _get_no_of_files('pkl' if namespace.out_format == 'bin' else namespace.out_format)
+        no_of_files = get_no_of_files(
+            OUT_FILES_CLASSICAL_TYPE_DIR,
+            'pkl' if namespace.out_format == 'bin' else namespace.out_format)
+        to_process_no = tot - no_of_files
+        LOGGER.info(f"No. of already existing files: {no_of_files}")
         to_process_list = filter(_process_value, isd_values)
     else:
         to_process_no = tot
@@ -247,18 +218,19 @@ def main(raw_args: Optional[list[str]] = None):
 
 
 def test():
-    p = 13232
+    prime = 48371
 
-    r = p
-    t = 134
+    r = prime
+    t = 131
     skip_algos = [
         BJMM, BJMMpdw, BJMMplus, BJMMdw, BothMay, MayOzerov, BallCollision
     ]
     #skip_algos= [BJMM,BothMay]
     # skip_algos = []
 
-    for (n0, mem_access) in itertools.product(range(2, 6), MemAccess):
-        n = p * n0
+    for (n0, mem_access) in itertools.product(range(4, 5), MemAccess):
+        n = prime * n0
+        input(f"n {n}, n-k {r}, t {t}, mem_access {mem_access.name}")
         sd = SDEstimator(n,
                          n - r,
                          t,
@@ -272,5 +244,5 @@ def test():
 
 
 if __name__ == '__main__':
-    # test()
-    main()
+    test()
+    # main()
