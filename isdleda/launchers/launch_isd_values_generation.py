@@ -16,6 +16,7 @@ def main():
     with open('./isdleda/assets/proper_primes.csv', 'r',
               newline='') as csvfile:
         reader = csv.reader(csvfile)
+        # actually there's just one row
         for row in reader:
             proper_primes = list(map(int, row))
     assert proper_primes is not None
@@ -25,8 +26,11 @@ def main():
     values: Set[Value] = set()
 
     for n0, lam in itertools.product(n0_values, lambda_values):
-        # print(n0, lam)
-        # ISD(n_0*p,p,t) / sqrt(p) attacked code rate (n_0-1)/n_0
+        # QUOTE: il metodo è quello di sendrier, per cui l'ISD per valori di n,
+        # lunghezza del codice, grandi, costa 2^{cw}, dove c è una costante
+        # dipendente dal rate e w è il peso ISD(n_0*p,p,t) / sqrt(p) attacked
+
+        # code rate (n_0-1)/n_0
         t1 = np.ceil(-lam / np.log2(1 - (n0 - 1) / n0))
         # ISD(n_0*p,p,2*v) / (p* binom{n_0}{2}), attacked code rate (n_0-1)/n_0
         v1 = np.ceil(-lam / np.log2(1 - (n0 - 1) / n0)) // 2
