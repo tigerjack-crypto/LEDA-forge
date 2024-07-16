@@ -1,6 +1,7 @@
 ##################
 # PROJECT
 ##################
+sshfs_mountpoint
 *.dat
 data/
 data*/
