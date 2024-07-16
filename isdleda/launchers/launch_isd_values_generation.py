@@ -27,7 +27,7 @@ def main():
     for n0, lam in itertools.product(n0_values, lambda_values):
         # print(n0, lam)
         # ISD(n_0*p,p,t) / sqrt(p) attacked code rate (n_0-1)/n_0
-        t = np.ceil(-lam / np.log2(1 - (n0 - 1) / n0))
+        t1 = np.ceil(-lam / np.log2(1 - (n0 - 1) / n0))
         # ISD(n_0*p,p,2*v) / (p* binom{n_0}{2}), attacked code rate (n_0-1)/n_0
         v1 = np.ceil(-lam / np.log2(1 - (n0 - 1) / n0)) // 2
         # ISD(2*p,p,2*v) / (n_0*p), attacked code rate (1/2)
@@ -39,10 +39,10 @@ def main():
         v_min = min(v1, v2, v3)
         v_max = max(v1, v2, v3)
 
-        # v should be odd
         v_range_low = int(.8 * v_min)
         v_range_high = int(1.3 * v_max)
 
+        # v should be odd
         if not v_range_low % 2:
             v_range_low -= 1
         if not v_range_high % 2:
@@ -51,6 +51,9 @@ def main():
         for v in range(v_range_low, v_range_high, 2):
             # p*n0 = (v*n0)^2 -> p = v^2*n0
             prime_guess = v**2 * n0
+
+            # Take only the acceptable primes with a +- 20% margin on the prime
+            # guess
             prime_range = filter(
                 lambda p: p >= int(.8 * prime_guess) and p <= int(
                     1.2 * prime_guess), proper_primes)
@@ -58,9 +61,10 @@ def main():
             # set, but only the equivalent t used to compute the complexity of
             # the Codeword Finding Problem (CFP)
             for prime in prime_range:
-                # key recovery 1 (n0*p, p, 2*v)
+                # key recovery 1: ISD(n0*p, p, 2*v)
                 value = Value(n=prime * n0,
                               r=prime,
+                              # This is the t used to assess the ISD attack
                               t=2 * v,
                               prime=prime,
                               n0=n0,
@@ -68,10 +72,11 @@ def main():
                               lambd=lam)
                 values.add(value)
 
-                # key recovery 2 (2p, p, 2v)
+                # key recovery 2 ISD(2p, p, 2v)
                 if n0 == 2:
                     value = Value(n=prime * 2,
                                   r=prime,
+                                  # This is the t used to assess the ISD attack
                                   t=2 * v,
                                   prime=prime,
                                   n0=n0,
@@ -79,21 +84,19 @@ def main():
                                   lambd=lam)
                     values.add(value)
 
-                # key recovery 3 (n0*p, (n0-1)*p, n0*v
+                # key recovery 3 ISD(n0*p, (n0-1)*p, n0*v
                 value = Value(n=prime * n0,
                               r=prime * (n0 - 1),
+                              # This is the t used to assess the ISD attack
                               t=n0 * v,
                               prime=prime,
                               n0=n0,
                               v=v,
                               lambd=lam)
                 values.add(value)
-                # classical = min(kr1, kr2, kr3)
-                # for p in range(1, 4):
-                #     # quantum key recovery 1, 2, 3 as before
+
         # Message recovery, i.e., Syndrome Decoding Problem (SDP)
-        for t in range(int(v1 * .8), int(v1 * 1.2)):
-            # t = 2v
+        for t in range(int(t1 * .8), int(t1 * 1.2)):
             prime_guess = (t / 2)**2 * n0
             prime_range = filter(
                 lambda p: p >= int(.8 * prime_guess) and p <= int(
@@ -105,11 +108,10 @@ def main():
                               t=t,
                               prime=prime,
                               n0=n0,
+                              # None bcz we are not interested in v in this attack
                               v=None,
                               lambd=lam)
                 values.add(value)
-                # for p in range(1, 4):
-                #     # quantum msg recovery p*n0, p, t
     print(len(values))
     print(f"Pickling to {ISD_VALUES_FILE_PKL}")
     save_to_pickle(ISD_VALUES_FILE_PKL, values)
