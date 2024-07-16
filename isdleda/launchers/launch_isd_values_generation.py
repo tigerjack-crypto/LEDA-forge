@@ -26,9 +26,27 @@ def main():
     values: Set[Value] = set()
 
     for n0, lam in itertools.product(n0_values, lambda_values):
-        # QUOTE: il metodo è quello di sendrier, per cui l'ISD per valori di n,
-        # lunghezza del codice, grandi, costa 2^{cw}, dove c è una costante
-        # dipendente dal rate e w è il peso ISD(n_0*p,p,t) / sqrt(p) attacked
+        # Approximate ISD hardness (Sendrier method). Given the weight $w$ of
+        # the codeword/error to be found and the code rate k/n=R, an ISD costs
+        # approx 2^cw, where the constant c depends on the rate
+        #
+        # c = log_2(1/(1-R)) c = -log_2(1-R) = -log2(1-(n_0-1)/n_0)
+        #
+        # c_X is the constant for a given number of blocks n_0, and a parity
+        # check matrix H which is one block high and n_0 wide, hence
+        #
+        # R=(n_0-1)/n_0
+        # 
+        # c_2 = 1
+        #
+        # c_3 = 1.58
+        # 
+        # c_4 = 2
+        #
+        # so, from 2^cw = lam, given c and lam (with lam already expressed in
+        # log2) we have
+        #
+        # w = lam/c
 
         # code rate (n_0-1)/n_0
         t1 = np.ceil(-lam / np.log2(1 - (n0 - 1) / n0))

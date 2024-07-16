@@ -12,7 +12,7 @@ OUT_FILES_QLB_FMT: str = os.path.join(OUT_FILES_QLB_DIR,
                                       OUT_FILES_QLB_PART_FMT)
 OUT_FILES_QLB_SYMBOLIC: str = os.path.join(OUT_FILES_QLB_DIR, "0_symbolic")
 
-# Classical
+# Classical, EsserBellini Tool
 OUT_FILES_CEB_TYPE_DIR: str = os.path.join(".", "out", "cisd_eb", "{out_type}")
 OUT_FILES_CEB_DIR: str = os.path.join(OUT_FILES_CEB_TYPE_DIR,
                                             "{memaccess}")

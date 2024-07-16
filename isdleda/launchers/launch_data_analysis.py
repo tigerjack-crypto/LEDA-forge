@@ -1,5 +1,6 @@
 # Needed for matplotlib to run without GUI
 import matplotlib as mpl
+
 mpl.use('Agg')
 
 import os
@@ -22,6 +23,7 @@ def cisd_eb_process(main_dir: str, filenames: Iterable[str]):
         cval = load_from_pickle(os.path.join(main_dir, filename))
         tup = (cval['params']['n'], cval['params']['n'] - cval['params']['r'],
                cval['params']['t'], cval['MinimumTime'][1]['estimate']['time'])
+
         values.append(tup)
     return values
 
@@ -93,7 +95,6 @@ def plot_data(cvals: list[dict]):
         ax.set_ylabel('weight')
         ax.set_zlabel('time')
 
-
         # Create a meshgrid for the plane
         x = np.linspace(min_first, max_first, 10)
         y = np.linspace(min_second, max_second, 10)
@@ -120,11 +121,12 @@ def main():
             MemAccess.MEM_CBRT,
     ):
 
-        cvalues_dir = OUT_FILES_CEB_DIR.format(out_type='pkl',
-                                            # memaccess=MemAccess.MEM_CONST.name)
-                                            memaccess=mem_access.name)
+        cvalues_dir = OUT_FILES_CEB_DIR.format(
+            out_type='pkl',
+            # memaccess=MemAccess.MEM_CONST.name)
+            memaccess=mem_access.name)
         cvalues = filter(lambda x: not x.startswith('0_symbolic'),
-                        os.listdir(cvalues_dir))
+                         os.listdir(cvalues_dir))
         cres = cisd_eb_process(cvalues_dir, cvalues)
         cres_grouped = process_data(cres)
         cvals_dic.append((mem_access.name, cres_grouped))
