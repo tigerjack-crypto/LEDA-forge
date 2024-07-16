@@ -230,7 +230,7 @@ def test():
 
     for (n0, mem_access) in itertools.product(range(4, 5), MemAccess):
         n = prime * n0
-        input(f"n {n}, n-k {r}, t {t}, mem_access {mem_access.name}")
+        print(f"n {n}, n-k {r}, t {t}, mem_access {mem_access.name}")
         sd = SDEstimator(n,
                          n - r,
                          t,
@@ -244,5 +244,5 @@ def test():
 
 
 if __name__ == '__main__':
-    test()
-    # main()
+    # test()
+    main()
