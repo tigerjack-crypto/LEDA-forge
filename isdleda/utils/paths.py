@@ -13,10 +13,10 @@ OUT_FILES_QLB_FMT: str = os.path.join(OUT_FILES_QLB_DIR,
 OUT_FILES_QLB_SYMBOLIC: str = os.path.join(OUT_FILES_QLB_DIR, "0_symbolic")
 
 # Classical
-OUT_FILES_CLASSICAL_TYPE_DIR: str = os.path.join(".", "out", "cisd", "{out_type}")
-OUT_FILES_CLASSICAL_DIR: str = os.path.join(".", "out", "cisd", "{out_type}",
+OUT_FILES_CEB_TYPE_DIR: str = os.path.join(".", "out", "cisd_eb", "{out_type}")
+OUT_FILES_CEB_DIR: str = os.path.join(OUT_FILES_CEB_TYPE_DIR,
                                             "{memaccess}")
-OUT_FILES_CLASSICAL_FMT: str = os.path.join(OUT_FILES_CLASSICAL_DIR,
+OUT_FILES_CEB_FMT: str = os.path.join(OUT_FILES_CEB_DIR,
                                             OUT_FILES_CLB_PART_FMT)
 
 # PRIMES_PATH = "isdleda/assets/proper_primes.csv"

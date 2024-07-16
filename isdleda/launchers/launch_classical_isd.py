@@ -20,8 +20,8 @@ from isdleda.launchers.launcher_utils import (argparse_check_positive,
                                               get_no_of_files, init_logger)
 from isdleda.utils.common import Value
 from isdleda.utils.export.export import load_from_pickle, save_to_pickle
-from isdleda.utils.paths import (ISD_VALUES_FILE_PKL, OUT_FILES_CLASSICAL_FMT,
-                                 OUT_FILES_CLASSICAL_TYPE_DIR)
+from isdleda.utils.paths import (ISD_VALUES_FILE_PKL, OUT_FILES_CEB_FMT,
+                                 OUT_FILES_CEB_TYPE_DIR)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -63,7 +63,7 @@ def _process_value(value):
             MemAccess.MEM_SQRT,
             MemAccess.MEM_CBRT,
     ):
-        out_file = OUT_FILES_CLASSICAL_FMT.format(memaccess=mem_access.name,
+        out_file = OUT_FILES_CEB_FMT.format(memaccess=mem_access.name,
                                                   out_type='pkl',
                                                   n=value.n,
                                                   r=value.r,
@@ -107,7 +107,7 @@ def isd_compute(arg):
             (MemAccess.MEM_SQRT, (Prange, )),
             (MemAccess.MEM_CBRT, (Prange, )),
         ):
-            out_file = OUT_FILES_CLASSICAL_FMT.format(
+            out_file = OUT_FILES_CEB_FMT.format(
                 memaccess=mem_access.name,
                 out_type='pkl',
                 n=value.n,
@@ -142,6 +142,12 @@ def isd_compute(arg):
             min_time = min(results.items(),
                            key=lambda algo: algo[1]['estimate']['time'])
             results['MinimumTime'] = min_time
+            results['params'] = {
+                'n': value.n,
+                'r': value.r,
+                't': value.t,
+                'mem': mem_access.name
+            }
             save_to_pickle(out_file, results)
             # save_to_pickle(out_file, min_time)
     te = time.perf_counter()
@@ -172,7 +178,7 @@ def main(raw_args: Optional[list[str]] = None):
 
     if namespace.skip_existing:
         no_of_files = get_no_of_files(
-            OUT_FILES_CLASSICAL_TYPE_DIR,
+            OUT_FILES_CEB_TYPE_DIR,
             'pkl' if namespace.out_format == 'bin' else namespace.out_format)
         to_process_no = tot - no_of_files
         LOGGER.info(f"No. of already existing files: {no_of_files}")
