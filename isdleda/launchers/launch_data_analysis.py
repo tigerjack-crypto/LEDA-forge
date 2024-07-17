@@ -61,7 +61,9 @@ def process_data(cres):
     values_dict = collections.defaultdict(list)
     for value in cres:
         # key = k/n
-        key = f"{value[1]/value[0]}"
+        # key = f"{value[1]/value[0]}"
+        # key = n0
+        key = value[0] // (value[1]) - value[0]
         values_dict[key].append(value)
     return values_dict
 
