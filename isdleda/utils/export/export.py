@@ -16,8 +16,16 @@ def save_to_pickle(filename: str, obj: Any):
 
 
 def load_from_pickle(filename: str) -> Any:
-    with open(filename, "rb") as fp:
-        return pickle.load(fp)
+    try:
+        with open(filename, "rb") as fp:
+            return pickle.load(fp)
+    except FileNotFoundError as e:
+        fn = filename + ".pkl" if not Path(filename).suffix == ".pkl" else filename
+        if fn == filename:
+            raise e
+        with open(fn, "rb") as fp:
+            return pickle.load(fp)
+
 
 
 def save_to_txt(filename: str, obj: Any):
