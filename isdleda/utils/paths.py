@@ -24,3 +24,7 @@ PRIMES_FILE_CSV = os.path.join("assets", "proper_primes.csv")
 
 ISD_VALUES_FILE_PKL = os.path.join("out", "isd_values.pkl")
 ISD_VALUES_FILE_JSON = os.path.join("out", "isd_values.json")
+
+# Figures
+OUT_PLOTS_DIR = os.path.join("out", "plots")
+OUT_PLOTS_DATA_DIR = os.path.join(OUT_PLOTS_DIR, "data")
