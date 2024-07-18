@@ -9,16 +9,25 @@ mpl.use('Agg')
 
 import collections
 import os
-from typing import Iterable, List
+from typing import Iterable
 
 from isdleda.launchers.launch_classical_isd import MemAccess
 from isdleda.utils.export.export import load_from_pickle, save_to_pickle
-from isdleda.utils.paths import OUT_FILE_FORMULA, OUT_FILES_CEB_DIR, OUT_PLOTS_DATA_DIR
+from isdleda.utils.paths import (OUT_FILE_FORMULA, OUT_FILES_CEB_DIR,
+                                 OUT_FILES_QLB_DIR, OUT_PLOTS_DATA_DIR)
+
+# Official NIST values
+AES_LAMBDAS = (143, 207, 272)
+# Values taken from my Ph.D. Thesis, table 6.5 (Jan+22). Nist uses the ones
+# from Jaques though.
+QAES_LAMBDAS = (154, 219, 283)
 
 # (k/n, t, effort)
 # exclude small values of time
-MIN_LAMBDA = 100
-MAX_LAMBDA = 300
+MIN_LAMBDA_C = int(.8 * AES_LAMBDAS[0])
+MAX_LAMBDA_C = int(1.2 * AES_LAMBDAS[-1])
+MIN_LAMBDA_Q = int(.8 * QAES_LAMBDAS[0])
+MAX_LAMBDA_Q = int(1.2 * QAES_LAMBDAS[-1])
 
 
 # cisd_leebrickell_process
@@ -28,7 +37,7 @@ def cisd_eb_process(main_dir: str, filenames: Iterable[str]):
         cval = load_from_pickle(os.path.join(main_dir, filename))
         time = cval['MinimumTime'][1]['estimate']['time']
         # Exclude values too far from the region of interest
-        if time > MIN_LAMBDA and time < MAX_LAMBDA:
+        if time > MIN_LAMBDA_C and time < MAX_LAMBDA_C:
             tup = (cval['params']['n'],
                    cval['params']['n'] - cval['params']['r'],
                    cval['params']['t'], time)
@@ -36,10 +45,10 @@ def cisd_eb_process(main_dir: str, filenames: Iterable[str]):
     return values
 
 
-def qisd_process(filenames: List[str]):
+def qisd_process(main_dir: str, filenames: Iterable[str]):
     values = []
     for filename in filenames:
-        qval = load_from_pickle(filename)
+        qval = load_from_pickle(os.path.join(main_dir, filename))
         n, k, t = None, None, None
         for key, value in qval['MinimumDepth'].in_params.items():
             match str(key):
@@ -52,8 +61,11 @@ def qisd_process(filenames: List[str]):
         assert n is not None, "n is None"
         assert k is not None, "k is None"
         assert t is not None, "t is None"
-        tup = (n, k, t, qval['MinimumDepth'].tmeas2.t_depth)
-        values.append(tup)
+        t_depth = qval['MinimumDepth'].tmeas2.t_depth
+        if t_depth > MIN_LAMBDA_Q and t_depth < MAX_LAMBDA_Q:
+            # For the parallelization, we are interested in 2*t_depth vs QAES
+            tup = (n, k, t, 2*t_depth)
+            values.append(tup)
     return values
 
 
@@ -69,14 +81,8 @@ def process_data(cres):
 
 
 def main():
-    cvals_dic = []
-    for mem_access in (
-            MemAccess.MEM_CONST,
-            MemAccess.MEM_LOG,
-            MemAccess.MEM_SQRT,
-            MemAccess.MEM_CBRT,
-    ):
-
+    # Classical EB
+    for mem_access in MemAccess:
         cvalues_dir = OUT_FILES_CEB_DIR.format(
             out_type='pkl',
             # memaccess=MemAccess.MEM_CONST.name)
@@ -86,8 +92,20 @@ def main():
                          os.listdir(cvalues_dir))
         cres = cisd_eb_process(cvalues_dir, cvalues)
         cres_grouped = process_data(cres)
-        cvals_dic.append((mem_access.name, cres_grouped))
-    save_to_pickle(os.path.join(OUT_PLOTS_DATA_DIR, "all"), cvals_dic)
+        out_file = os.path.join(OUT_PLOTS_DATA_DIR,
+                                f"cisd_eb_{mem_access.name}")
+
+        save_to_pickle(out_file, cres_grouped)
+
+    # Quantum Mine LB
+    # vals_dic = []
+    qvalues_dir = OUT_FILES_QLB_DIR.format(out_type='pkl')
+    qvalues = filter(lambda x: not x.startswith(OUT_FILE_FORMULA),
+                     os.listdir(qvalues_dir))
+    qres = qisd_process(qvalues_dir, qvalues)
+    qres_grouped = process_data(qres)
+
+    save_to_pickle(os.path.join(OUT_PLOTS_DATA_DIR, "q_lb"), qres_grouped)
 
 
 if __name__ == '__main__':
