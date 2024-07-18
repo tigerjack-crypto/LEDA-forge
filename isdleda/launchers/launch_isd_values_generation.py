@@ -43,6 +43,8 @@ def main():
         # 
         # c_4 = 2
         #
+        # c_5 = 2.32
+        #
         # so, from 2^cw = lam, given c and lam (with lam already expressed in
         # log2) we have
         #
@@ -95,7 +97,8 @@ def main():
                 values.add(value)
 
                 # key recovery 2 ISD(2p, p, 2v)
-                if n0 == 2:
+                # Each n0 !=2 can be reduced to n0=2
+                if n0 != 2:
                     value = Value(n=prime * 2,
                                   r=prime,
                                   # This is the t used to assess the ISD attack
@@ -108,7 +111,7 @@ def main():
 
                 # key recovery 3 ISD(n0*p, (n0-1)*p, n0*v
                 value = Value(n=prime * n0,
-                              r=prime * (n0 - 1),
+                              r=prime,
                               # This is the t used to assess the ISD attack
                               t=n0 * v,
                               prime=prime,
