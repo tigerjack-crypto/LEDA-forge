@@ -82,7 +82,7 @@ def main():
             # memaccess=MemAccess.MEM_CONST.name)
             memaccess=mem_access.name)
         # exclude symbolic expression
-        cvalues = filter(lambda x: not x.startswith('0_symbolic'),
+        cvalues = filter(lambda x: not x.startswith(OUT_FILE_FORMULA),
                          os.listdir(cvalues_dir))
         cres = cisd_eb_process(cvalues_dir, cvalues)
         cres_grouped = process_data(cres)
