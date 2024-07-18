@@ -13,7 +13,7 @@ from typing import Iterable, List
 
 from isdleda.launchers.launch_classical_isd import MemAccess
 from isdleda.utils.export.export import load_from_pickle, save_to_pickle
-from isdleda.utils.paths import OUT_FILES_CEB_DIR, OUT_PLOTS_DATA_DIR
+from isdleda.utils.paths import OUT_FILE_FORMULA, OUT_FILES_CEB_DIR, OUT_PLOTS_DATA_DIR
 
 # (k/n, t, effort)
 # exclude small values of time
@@ -62,8 +62,8 @@ def process_data(cres):
     for value in cres:
         # key = k/n
         # key = f"{value[1]/value[0]}"
-        # key = n0
-        key = value[0] // (value[1]) - value[0]
+        # key = n0 = n / (n-k)
+        key = value[0] // (value[0] - value[1])
         values_dict[key].append(value)
     return values_dict
 
