@@ -1,18 +1,16 @@
 # Needed for matplotlib to run without GUI
 # import matplotlib as mpl
 # mpl.use('Agg')
+# import matplotlib.pyplot as plt
 
 import os
-
-# import matplotlib.pyplot as plt
 
 import numpy as np
 import plotly.graph_objects as go
 # from plotly.subplots import make_subplots
 import plotly.io as pio
-
 from isdleda.utils.export.export import load_from_pickle
-from isdleda.utils.paths import OUT_PLOTS_DIR, OUT_PLOTS_DATA_DIR
+from isdleda.utils.paths import OUT_PLOTS_DATA_DIR, OUT_PLOTS_DIR
 
 
 def plot_data_plotly(cvals: list[dict]):
@@ -111,8 +109,6 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
 
 # def plot_data_matplotlib(cvals: list[dict]):
 #     # fig = plt.figure()
