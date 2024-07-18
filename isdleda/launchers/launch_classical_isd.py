@@ -2,12 +2,12 @@
 """
 import argparse
 import collections
+import functools
 import itertools
 import logging
 import os
 import time
 from datetime import datetime
-from enum import IntEnum
 from multiprocessing import Pool
 from typing import Optional, Sequence
 
@@ -16,7 +16,8 @@ from cryptographic_estimators.SDEstimator import (BJMM, BallCollision, BJMMdw,
                                                   BJMMpdw, BJMMplus, BothMay,
                                                   MayOzerov, Prange,
                                                   SDEstimator)
-from isdleda.launchers.launcher_utils import (argparse_check_positive,
+from isdleda.launchers.launcher_utils import (MemAccess,
+                                              argparse_check_positive,
                                               get_no_of_files, init_logger)
 from isdleda.utils.common import Value
 from isdleda.utils.export.export import load_from_pickle, save_to_pickle
@@ -26,21 +27,15 @@ from isdleda.utils.paths import (ISD_VALUES_FILE_PKL, OUT_FILES_CEB_FMT,
 LOGGER = logging.getLogger(__name__)
 
 
-class MemAccess(IntEnum):
-    MEM_CONST = 0
-    MEM_LOG = 1
-    MEM_SQRT = 2
-    MEM_CBRT = 3
-
-
 def parse_arguments():
 
     parser = argparse.ArgumentParser("Launch Classical ISD estimator")
-    parser.add_argument('-p',
-                        '--poolsize',
-                        required=True,
-                        type=argparse_check_positive,
-                        help="Multiprocess pool size")
+    parser.add_argument(
+        '-p',
+        '--poolsize',
+        default=1,
+        type=argparse_check_positive,
+        help="Multiprocess pool size. Default is 1 for fully sequential.")
     parser.add_argument('--max-tasks',
                         type=argparse_check_positive,
                         help="Multiprocess max tasks per child")
@@ -51,11 +46,11 @@ def parse_arguments():
     parser.add_argument("--skip-existing",
                         action="store_true",
                         help="Skip quantum complexity files if existing")
-    parser.add_argument("--out-format", choices=["txt", "bin"], default="bin")
+    parser.add_argument("--out-format", choices=["txt", "pkl"], default="pkl")
     return parser
 
 
-def _process_value(value):
+def _process_value(value: Value, out_type: str, file_ext: str):
     to_skip = True
     for mem_access in (
             MemAccess.MEM_CONST,
@@ -64,11 +59,11 @@ def _process_value(value):
             MemAccess.MEM_CBRT,
     ):
         out_file = OUT_FILES_CEB_FMT.format(memaccess=mem_access.name,
-                                                  out_type='pkl',
-                                                  n=value.n,
-                                                  r=value.r,
-                                                  t=value.t,
-                                                  ext='pkl')
+                                            out_type=out_type,
+                                            n=value.n,
+                                            r=value.r,
+                                            t=value.t,
+                                            ext=file_ext)
         if to_skip and os.path.isfile(out_file):
             LOGGER.info(f"{out_file} already existing, skipping")
             # continue
@@ -87,7 +82,7 @@ def _group_by_n_k(values):
     return values_dict
 
 
-def isd_compute(arg):
+def isd_compute(arg, out_type: str, file_ext: str):
     # should be a list of values having same n and r
     # excluded_algorithms_by_default = [BJMMd2, BJMMd3, MayOzerovD2, MayOzerovD3]
     values_grouped = arg
@@ -107,13 +102,12 @@ def isd_compute(arg):
             (MemAccess.MEM_SQRT, (Prange, )),
             (MemAccess.MEM_CBRT, (Prange, )),
         ):
-            out_file = OUT_FILES_CEB_FMT.format(
-                memaccess=mem_access.name,
-                out_type='pkl',
-                n=value.n,
-                r=value.r,
-                t=value.t,
-                ext='pkl')
+            out_file = OUT_FILES_CEB_FMT.format(memaccess=mem_access.name,
+                                                out_type=out_type,
+                                                n=value.n,
+                                                r=value.r,
+                                                t=value.t,
+                                                ext=file_ext)
             sd = SDEstimator(value.n,
                              value.n - value.r,
                              value.t,
@@ -156,7 +150,7 @@ def isd_compute(arg):
 
 def main(raw_args: Optional[list[str]] = None):
     print("#" * 80)
-    init_logger(LOGGER, 'out/cisd.log')
+    init_logger(LOGGER, 'logs/cisd.log')
     parser = parse_arguments()
     if raw_args and len(raw_args) != 0:
         namespace = parser.parse_args(raw_args)
@@ -164,6 +158,19 @@ def main(raw_args: Optional[list[str]] = None):
         namespace = parser.parse_args()
     LOGGER.info(namespace)
     LOGGER.info("#" * 80)
+
+    #
+    out_type = 'pkl' if namespace.out_format == 'bin' else namespace.out_format
+    match out_type:
+        case 'bin':
+            file_ext = 'pkl'
+        case 'pkl':
+            file_ext = 'pkl'
+        case 'txt':
+            file_ext = 'txt'
+        case _:
+            raise AttributeError(f"Wrong value for out_type: {out_type} ")
+
     t0 = datetime.now()
     LOGGER.info(f"Starting data filtering at {t0}")
 
@@ -177,12 +184,13 @@ def main(raw_args: Optional[list[str]] = None):
     LOGGER.info(f"Skip existing is: {namespace.skip_existing}")
 
     if namespace.skip_existing:
-        no_of_files = get_no_of_files(
-            OUT_FILES_CEB_TYPE_DIR,
-            'pkl' if namespace.out_format == 'bin' else namespace.out_format)
+        no_of_files = get_no_of_files(OUT_FILES_CEB_TYPE_DIR, out_type)
         to_process_no = tot - no_of_files
+        filter_fun = functools.partial(_process_value,
+                                       out_type=out_type,
+                                       file_ext=file_ext)
         LOGGER.info(f"No. of already existing files: {no_of_files}")
-        to_process_list = filter(_process_value, isd_values)
+        to_process_list = filter(filter_fun, isd_values)
     else:
         to_process_no = tot
         to_process_list = isd_values
@@ -194,9 +202,13 @@ def main(raw_args: Optional[list[str]] = None):
     acc = 0
     t0 = datetime.now()
     LOGGER.info(f"Starting processing at {t0}")
+
+    isd_compute_partial = functools.partial(isd_compute,
+                                            out_type=out_type,
+                                            file_ext=file_ext)
     if namespace.poolsize == 1:
         for _, value in enumerate(to_process_group_nr.values()):
-            values, computations, _ = isd_compute(value)
+            values, computations, _ = isd_compute_partial(value)
             acc += computations
             print(
                 f"done {acc}/{to_process_no} (out of {tot}) -> {acc /to_process_no:%} ({acc /tot:%})",
@@ -206,7 +218,7 @@ def main(raw_args: Optional[list[str]] = None):
                   maxtasksperchild=namespace.max_tasks) as p:
             for _, result in enumerate(
                     p.imap_unordered(
-                        isd_compute,
+                        isd_compute_partial,
                         to_process_group_nr.values(),
                         chunksize=namespace.chunksize,
                     )):

@@ -1,7 +1,15 @@
 import argparse
-import os
 import logging
+import os
+from enum import IntEnum
 from typing import Optional
+
+
+class MemAccess(IntEnum):
+    MEM_CONST = 0
+    MEM_LOG = 1
+    MEM_SQRT = 2
+    MEM_CBRT = 3
 
 
 def argparse_check_positive(value):
