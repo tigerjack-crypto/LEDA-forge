@@ -33,25 +33,25 @@ def plot_data_plotly(qvals_dic: dict, title: str, out_file_name: str, lambda_val
                 y=second_values,
                 z=third_values,
                 mode='markers',
-                marker=dict(size=2, color=colors[idx]),
+                marker=dict(size=4, color=colors[idx]),
                 name=ratio,
-                showlegend=False,
                 hovertemplate=
                 '<b>n</b>: %{x}<br><b>weight</b>: %{y}<br><b>time</b>: %{z}<extra>%{fullData.name}</extra>'  # Custom hover text
             ))
         # Dummy trace for the legend with larger markers
-        fig.add_trace(
-            go.Scatter3d(
-                x=[None],
-                y=[None],
-                z=[None],
-                mode='markers',
-                name=ratio,
-                marker=dict(
-                    size=10,
-                    color=colors[idx]),  # Larger markers for the legend
-                showlegend=True,
-            ))
+        # But this doesn't allow to toggle visibility anymore :(
+        # fig.add_trace(
+        #     go.Scatter3d(
+        #         x=[None],
+        #         y=[None],
+        #         z=[None],
+        #         mode='markers',
+        #         name=ratio,
+        #         marker=dict(
+        #             size=10,
+        #             color=colors[idx]),  # Larger markers for the legend
+        #         showlegend=True,
+        #     ))
         _val = min(first_values)
         if _val < min_first:
             min_first = _val
@@ -79,22 +79,28 @@ def plot_data_plotly(qvals_dic: dict, title: str, out_file_name: str, lambda_val
             go.Surface(x=x,
                        y=y,
                        z=z1,
+                       name="Level 1",
                        colorscale=[[0, 'red'], [1, 'red']],
                        opacity=0.5,
+                       hoverinfo="none",
                        showscale=False))
         fig.add_trace(
             go.Surface(x=x,
                        y=y,
                        z=z2,
+                       name="Level 3",
                        colorscale=[[0, 'red'], [1, 'red']],
                        opacity=0.5,
+                       hoverinfo="skip",
                        showscale=False))
         fig.add_trace(
             go.Surface(x=x,
                        y=y,
                        z=z3,
+                       name="Level 5",
                        colorscale=[[0, 'red'], [1, 'red']],
                        opacity=0.5,
+                       hoverinfo="skip",
                        showscale=False))
 
         # Set labels and title
