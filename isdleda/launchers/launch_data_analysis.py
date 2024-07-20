@@ -62,7 +62,7 @@ def qisd_process(main_dir: str, filenames: Iterable[str]):
         assert k is not None, "k is None"
         assert t is not None, "t is None"
         t_depth = qval['MinimumDepth'].tmeas2.t_depth
-        if t_depth > MIN_LAMBDA_Q and t_depth < MAX_LAMBDA_Q:
+        if 2*t_depth > MIN_LAMBDA_Q and 2*t_depth < MAX_LAMBDA_Q:
             # For the parallelization, we are interested in 2*t_depth vs QAES
             tup = (n, k, t, 2*t_depth)
             values.append(tup)
