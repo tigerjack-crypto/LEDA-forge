@@ -20,7 +20,8 @@ from isdleda.launchers.launcher_utils import (MemAccess,
                                               argparse_check_positive,
                                               get_no_of_files, init_logger)
 from isdleda.utils.common import Value
-from isdleda.utils.export.export import load_from_pickle, save_to_pickle
+from isdleda.utils.export.export import (load_from_pickle, save_to_json,
+                                         save_to_pickle)
 from isdleda.utils.paths import (ISD_VALUES_FILE_PKL, OUT_FILES_CEB_FMT,
                                  OUT_FILES_CEB_TYPE_DIR)
 
@@ -46,7 +47,7 @@ def parse_arguments():
     parser.add_argument("--skip-existing",
                         action="store_true",
                         help="Skip quantum complexity files if existing")
-    parser.add_argument("--out-format", choices=["txt", "pkl"], default="pkl")
+    parser.add_argument("--out-format", choices=["pkl", "json"], default="pkl")
     return parser
 
 
@@ -142,7 +143,13 @@ def isd_compute(arg, out_type: str, file_ext: str):
                 't': value.t,
                 'mem': mem_access.name
             }
-            save_to_pickle(out_file, results)
+            match file_ext:
+                case 'pkl':
+                    save_to_pickle(out_file, results)
+                case 'json':
+                    save_to_json(out_file, results)
+                case _:
+                    raise Exception(f"{file_ext} saving not implemented yet")
             # save_to_pickle(out_file, min_time)
     te = time.perf_counter()
     return (values_grouped, len(values_grouped) * 4, te - t0)
@@ -166,8 +173,8 @@ def main(raw_args: Optional[list[str]] = None):
             file_ext = 'pkl'
         case 'pkl':
             file_ext = 'pkl'
-        case 'txt':
-            file_ext = 'txt'
+        case 'json':
+            file_ext = 'json'
         case _:
             raise AttributeError(f"Wrong value for out_type: {out_type} ")
 
