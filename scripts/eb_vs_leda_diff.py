@@ -1,17 +1,18 @@
-import os
-import json
-from typing import List
 import csv
+import json
 import os
+from typing import List
 
-# Directories
 
 # DIR1 = os.path.join("sshfs_mountpoint", "vc", "isd-leda", "out", "cisd_eb",
 #                     "json", "MEM_LOG")
 # DIR2 = os.path.join("sshfs_mountpoint", "vc", "LEDAtools", "out", "results",
 #                     "json")
+
+# Server directories and files
 DIR1 = '/home/sperriello/vc/isd-leda/out/cisd_eb/json/MEM_LOG/'
 DIR2 = '/home/sperriello/vc/LEDAtools/out/results/json/'
+OUT_FILE = 'out/eb_vs_leda_diff.csv'
 
 
 def extract_value_from_json(file_path, key_tree: List[str]):
@@ -42,43 +43,54 @@ def main():
     print(f"Get common files")
     common_files = files_in_dir1.intersection(files_in_dir2)
 
-    with open('out/eb_vs_leda_diff.csv', 'w', newline='') as csvfile:
+    with open(OUT_FILE, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile,
                             delimiter=',',
                             quotechar='|',
                             quoting=csv.QUOTE_MINIMAL)
         # EB - LEDA
         writer.writerow([
-            'n', 'r', 't', 'EB Stern', 'EB Stern p', 'EB Stern l',
-            'EB Stern M4R', 'LEDA Stern', 'LEDA Stern p', 'LEDA Stern l'
+            'n', 'k', 't', 'EB Stern', 'EB GJE', 'EB Stern p', 'EB Stern l',
+            'EB Stern M4R', 'LEDA Stern', 'LEDA GJE', 'LEDA Stern p',
+            'LEDA Stern l'
         ])
         for filename in common_files:
             eb_path = os.path.join(DIR1, filename)
             leda_path = os.path.join(DIR2, filename)
 
-            eb_val = extract_value_from_json(eb_path, ["Stern", "estimate"])
-            eb_time = eb_val.get("time")
-            eb_p = eb_val.get("parameters").get("p")
-            eb_l = eb_val.get("parameters").get("l")
-            eb_m4r = eb_val.get("parameters").get("r")
+            eb_val = extract_value_from_json(eb_path, [
+                "Stern",
+            ])
+            eb_val_estimate = eb_val.get("estimate")
+            eb_time = eb_val_estimate.get("time")
+            eb_gje = eb_val.get("additional_information").get("gauss")
+            eb_p = eb_val_estimate.get("parameters").get("p")
+            eb_l = eb_val_estimate.get("parameters").get("l")
+            eb_m4r = eb_val_estimate.get("parameters").get("r")
 
-            leda_val = extract_value_from_json(leda_path, ["MRA", "C"])
-            if leda_val.get("alg_name") == "Stern":
-                leda_time = leda_val.get("value")
-                leda_p = leda_val.get("params").get("p")
-                leda_l = leda_val.get("params").get("l")
+            leda_val = extract_value_from_json(leda_path, ["Classic"])
+            leda_val_plain = leda_val.get("Plain")
+
+            if leda_val_plain.get("alg_name") == "Stern":
+                leda_time = leda_val.get("MRA")
+                leda_gje = leda_val_plain.get("gje_cost")
+                leda_p = leda_val_plain.get("params").get("p")
+                leda_l = leda_val_plain.get("params").get("l")
             else:
                 continue
-            n, r, t = filename[:-5].split('_')
+            n, k, t = filename[:-5].split('_')
 
             writer.writerow([
                 int(n),
-                int(r),
+                int(k),
                 int(t),
-                float(eb_time), 2 * int(eb_p),
+                float(eb_time),
+                float(eb_gje),
+                2 * int(eb_p),
                 int(eb_l),
                 int(eb_m4r),
                 float(leda_time),
+                float(leda_gje),
                 int(leda_p),
                 int(leda_l)
             ])
