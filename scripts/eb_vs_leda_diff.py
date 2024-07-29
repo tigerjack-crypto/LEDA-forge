@@ -1,8 +1,8 @@
 import csv
 import json
 import os
-from typing import List
-
+import pickle
+from pathlib import Path
 
 # DIR1 = os.path.join("sshfs_mountpoint", "vc", "isd-leda", "out", "cisd_eb",
 #                     "json", "MEM_LOG")
@@ -10,18 +10,10 @@ from typing import List
 #                     "json")
 
 # Server directories and files
-DIR1 = '/home/sperriello/vc/isd-leda/out/cisd_eb/json/MEM_LOG/'
+# DIR1 = '/home/sperriello/vc/isd-leda/out/cisd_eb/json/MEM_LOG/'
+DIR1 = '/home/sperriello/vc/isd-leda/out/cisd_eb_original/pkl/MEM_LOG/'
 DIR2 = '/home/sperriello/vc/LEDAtools/out/results/json/'
 OUT_FILE = 'out/eb_vs_leda_diff.csv'
-
-
-def extract_value_from_json(file_path, key_tree: List[str]):
-    with open(file_path, 'r') as file:
-        data = json.load(file)
-        intermediate_val = data
-        for key in key_tree:
-            intermediate_val = intermediate_val.get(key, None)
-        return intermediate_val
 
 
 def main():
@@ -35,9 +27,9 @@ def main():
 
     # Get list of files in both directories
     print(f"Get list of files for {DIR1}")
-    files_in_dir1 = set(os.listdir(DIR1))
+    files_in_dir1 = set([Path(filename).stem for filename in os.listdir(DIR1)])
     print(f"Get list of files for {DIR2}")
-    files_in_dir2 = set(os.listdir(DIR2))
+    files_in_dir2 = set([Path(filename).stem for filename in os.listdir(DIR2)])
 
     # Find common files
     print(f"Get common files")
@@ -50,17 +42,26 @@ def main():
                             quoting=csv.QUOTE_MINIMAL)
         # EB - LEDA
         writer.writerow([
-            'n', 'k', 't', 'EB Stern', 'EB GJE', 'EB Stern p', 'EB Stern l',
-            'EB Stern M4R', 'LEDA Stern', 'LEDA GJE', 'LEDA Stern p',
-            'LEDA Stern l'
+            'n',
+            'k',
+            't',  #
+            'EB Stern time',
+            'LEDA Stern time',  #
+            'EB GJE',
+            'LEDA GJE',  #
+            'EB Stern p',
+            'LEDA Stern p',  #
+            'EB Stern l',
+            'LEDA Stern l',
+            'EB Stern M4R',
         ])
         for filename in common_files:
             eb_path = os.path.join(DIR1, filename)
             leda_path = os.path.join(DIR2, filename)
 
-            eb_val = extract_value_from_json(eb_path, [
-                "Stern",
-            ])
+            with open(eb_path + ".pkl", "rb") as fp:
+                eb_val = pickle.load(fp)
+            eb_val = eb_val['Stern']
             eb_val_estimate = eb_val.get("estimate")
             eb_time = eb_val_estimate.get("time")
             eb_gje = eb_val.get("additional_information").get("gauss")
@@ -68,7 +69,10 @@ def main():
             eb_l = eb_val_estimate.get("parameters").get("l")
             eb_m4r = eb_val_estimate.get("parameters").get("r")
 
-            leda_val = extract_value_from_json(leda_path, ["Classic"])
+            with open(leda_path + ".json", "r") as fp:
+                data = json.load(fp)
+            # leda_val = extract_value_from_json(leda_path, ["Classic"])
+            leda_val = data["Classic"]
             leda_val_plain = leda_val.get("Plain")
 
             if leda_val_plain.get("alg_name") == "Stern":
@@ -78,21 +82,21 @@ def main():
                 leda_l = leda_val_plain.get("params").get("l")
             else:
                 continue
-            n, k, t = filename[:-5].split('_')
+            n, k, t = filename.split('_')
 
             writer.writerow([
                 int(n),
                 int(k),
                 int(t),
                 float(eb_time),
-                float(eb_gje),
-                2 * int(eb_p),
-                int(eb_l),
-                int(eb_m4r),
                 float(leda_time),
+                float(eb_gje),
                 float(leda_gje),
+                2 * int(eb_p),
                 int(leda_p),
-                int(leda_l)
+                int(eb_l),
+                int(leda_l),
+                int(eb_m4r),
             ])
 
 
