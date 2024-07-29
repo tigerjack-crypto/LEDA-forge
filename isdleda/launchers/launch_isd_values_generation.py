@@ -3,12 +3,32 @@
 import csv
 import itertools
 from dataclasses import asdict
-from typing import Set
+from typing import Dict
 
 import numpy as np
 from isdleda.utils.common import Value
-from isdleda.utils.export.export import save_to_json, save_to_pickle
+from isdleda.utils.export.export import save_to_pickle, save_to_json
 from isdleda.utils.paths import ISD_VALUES_FILE_JSON, ISD_VALUES_FILE_PKL
+
+
+def add_to_dict(values: Dict[str, Value], n, r, t, prime, n0, v, lambd, msg):
+    _key = f"{n}_{r}_{t}"
+    if _key not in values:
+        value = Value(
+            n=n,
+            r=r,
+            # This is the t used to assess the ISD attack
+            t=t,
+            prime=prime,
+            n0=n0,
+            v=v,
+            lambd=lambd,
+            msgs=[msg],
+        )
+        values[_key] = value
+    else:
+        _val = values[_key]
+        _val.msgs.append(msg)
 
 
 def main():
@@ -23,7 +43,7 @@ def main():
     n0_values = range(2, 6)
 
     lambda_values = (128, 192, 256)
-    values: Set[Value] = set()
+    values: Dict[str, Value] = dict()
 
     for n0, lam in itertools.product(n0_values, lambda_values):
         # Approximate ISD hardness (Sendrier method). Given the weight $w$ of
@@ -36,11 +56,11 @@ def main():
         # check matrix H which is one block high and n_0 wide, hence
         #
         # R=(n_0-1)/n_0
-        # 
+        #
         # c_2 = 1
         #
         # c_3 = 1.58
-        # 
+        #
         # c_4 = 2
         #
         # c_5 = 2.32
@@ -86,39 +106,27 @@ def main():
             # the Codeword Finding Problem (CFP)
             for prime in prime_range:
                 # key recovery 1: ISD(n0*p, p, 2*v)
-                value = Value(n=prime * n0,
-                              r=prime,
-                              # This is the t used to assess the ISD attack
-                              t=2 * v,
-                              prime=prime,
-                              n0=n0,
-                              v=v,
-                              lambd=lam)
-                values.add(value)
+                msg = "KR1"
+                _n = prime * n0
+                _r = prime
+                _t = 2 * v
+                add_to_dict(values, _n, _r, _t, prime, n0, v, lam, msg)
 
                 # key recovery 2 ISD(2p, p, 2v)
                 # Each n0 !=2 can be reduced to n0=2
                 if n0 != 2:
-                    value = Value(n=prime * 2,
-                                  r=prime,
-                                  # This is the t used to assess the ISD attack
-                                  t=2 * v,
-                                  prime=prime,
-                                  n0=n0,
-                                  v=v,
-                                  lambd=lam)
-                    values.add(value)
+                    msg = "KR2"
+                    _n = prime * 2
+                    _r = prime
+                    _t = 2 * v
+                    add_to_dict(values, _n, _r, _t, prime, n0, v, lam, msg)
 
                 # key recovery 3 ISD(n0*p, (n0-1)*p, n0*v
-                value = Value(n=prime * n0,
-                              r=prime,
-                              # This is the t used to assess the ISD attack
-                              t=n0 * v,
-                              prime=prime,
-                              n0=n0,
-                              v=v,
-                              lambd=lam)
-                values.add(value)
+                msg = "KR3"
+                _n = prime * n0
+                _r = prime
+                _t = n0 * v
+                add_to_dict(values, _n, _r, _t, prime, n0, v, lam, msg)
 
         # Message recovery, i.e., Syndrome Decoding Problem (SDP)
         for t in range(int(t1 * .8), int(t1 * 1.2)):
@@ -128,20 +136,17 @@ def main():
                     1.2 * prime_guess), proper_primes)
             for prime in prime_range:
                 # msg recovery p*n0, p, t
-                value = Value(n=prime * n0,
-                              r=prime,
-                              t=t,
-                              prime=prime,
-                              n0=n0,
-                              # None bcz we are not interested in v in this attack
-                              v=None,
-                              lambd=lam)
-                values.add(value)
+                _n = prime * n0
+                _r = prime
+                _t = t
+                add_to_dict(values, _n, _r, _t, prime, n0, v, lam, msg)
+
     print(len(values))
+    values_set = set(values.values())
     print(f"Pickling to {ISD_VALUES_FILE_PKL}")
-    save_to_pickle(ISD_VALUES_FILE_PKL, values)
+    save_to_pickle(ISD_VALUES_FILE_PKL, values_set)
     print(f"JSONing to {ISD_VALUES_FILE_JSON}")
-    save_to_json(ISD_VALUES_FILE_JSON, [asdict(x) for x in sorted(values)])
+    save_to_json(ISD_VALUES_FILE_JSON, [asdict(x) for x in sorted(values_set)])
 
 
 if __name__ == '__main__':

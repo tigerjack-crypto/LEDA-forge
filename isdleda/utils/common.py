@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from enum import StrEnum, auto
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 
 class Attacks(StrEnum):
@@ -20,9 +20,7 @@ class Value:
     n0: Optional[int] = field(default=None, compare=False)
     v: Optional[int] = field(default=None, compare=False)
     lambd: Optional[int] = field(default=None, compare=False)
-
-    # def __post_init__(self):
-    #     self.k = self.n - self.r
+    msgs: List[str] = field(default_factory=list, compare=False)
 
 
 @dataclass(order=True)
