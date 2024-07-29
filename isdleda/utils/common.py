@@ -22,6 +22,12 @@ class Value:
     lambd: Optional[int] = field(default=None, compare=False)
     msgs: List[str] = field(default_factory=list, compare=False)
 
+# especially useful for json
+def dict_to_value(dct):
+    if 'n' in dct and 'r' in dct and 't' in dct:
+        return Value(**dct)
+    return dct
+
 
 @dataclass(order=True)
 class ISDVariant:

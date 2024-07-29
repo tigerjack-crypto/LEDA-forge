@@ -26,6 +26,17 @@ def load_from_pickle(filename: str) -> Any:
         with open(fn, "rb") as fp:
             return pickle.load(fp)
 
+def load_from_json(filename: str) -> Any:
+    try:
+        with open(filename, "r") as fp:
+            return json.load(fp)
+    except FileNotFoundError as e:
+        fn = filename + ".json" if not Path(filename).suffix == ".json" else filename
+        if fn == filename:
+            raise e
+        with open(fn, "r") as fp:
+            return json.load(fp)
+
 
 
 def save_to_txt(filename: str, obj: Any):
