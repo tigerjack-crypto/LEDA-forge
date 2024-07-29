@@ -3,7 +3,6 @@
 import argparse
 import collections
 import functools
-import itertools
 import logging
 import os
 import time
@@ -12,9 +11,9 @@ from multiprocessing import Pool
 from typing import Optional, Sequence
 
 # BallCollision, BJMM, BJMMdw, BJMMpdw, BJMMplus, BothMay, Dumer, MayOzerov, Prange, Stern
+from cryptographic_estimators.SDEstimator import MayOzerov  # Prange,
 from cryptographic_estimators.SDEstimator import (BJMM, BallCollision, BJMMdw,
                                                   BJMMpdw, BJMMplus, BothMay,
-                                                  MayOzerov, Prange,
                                                   SDEstimator)
 from isdleda.launchers.launcher_utils import (MemAccess,
                                               argparse_check_positive,
@@ -86,7 +85,7 @@ def _group_by_n_k(values):
 def isd_compute(arg, out_type: str, file_ext: str):
     # should be a list of values having same n and r
     # excluded_algorithms_by_default = [BJMMd2, BJMMd3, MayOzerovD2, MayOzerovD3]
-    values_grouped = arg
+    values_grouped: Sequence[Value] = arg
     LOGGER.info(f"Computing {values_grouped}")
     skip_algos = [
         BJMM, BallCollision, BJMMdw, BJMMpdw, BJMMplus, BothMay, MayOzerov
@@ -98,15 +97,15 @@ def isd_compute(arg, out_type: str, file_ext: str):
         # cost, so we can compute it only once, and reuse the results later
         # prange = None
         for (mem_access, additional_skip) in (
-            (MemAccess.MEM_CONST, (Prange, )),
-            (MemAccess.MEM_LOG, (Prange, )),
-            (MemAccess.MEM_SQRT, (Prange, )),
-            (MemAccess.MEM_CBRT, (Prange, )),
+            (MemAccess.MEM_CONST, ()),
+            (MemAccess.MEM_LOG, ()),
+            (MemAccess.MEM_SQRT, ()),
+            (MemAccess.MEM_CBRT, ()),
         ):
             out_file = OUT_FILES_CEB_FMT.format(memaccess=mem_access.name,
                                                 out_type=out_type,
                                                 n=value.n,
-                                                r=value.r,
+                                                k=value.n - value.r,
                                                 t=value.t,
                                                 ext=file_ext)
             sd = SDEstimator(value.n,
@@ -116,30 +115,13 @@ def isd_compute(arg, out_type: str, file_ext: str):
                              list(additional_skip),
                              memory_access=mem_access.value)
             results = sd.estimate()
-            # This was used when Prange was still in the game
-            # if mem_access == MemAccess.MEM_CONST:
-            #     prange = results['Prange']
-            # else:
-            #     if prange is None:
-            #         # prange was not computed (bcz the file was already present).
-            #         # We compute only prange here and store
-            #         LOGGER.info("Computing Prange for MEM_CONST")
-            #         _sd = SDEstimator(
-            #             value.n,
-            #             value.n - value.r,
-            #             value.t,
-            #             # Should execute only Prange
-            #             excluded_algorithms=skip_algos + [Stern, Dumer],
-            #             memory_access=MemAccess.MEM_CONST)
-            #         _results = _sd.estimate()
-            #         prange = results['Prange']
-            #         results['Prange'] = prange
             min_time = min(results.items(),
                            key=lambda algo: algo[1]['estimate']['time'])
             results['MinimumTime'] = min_time
             results['params'] = {
                 'n': value.n,
                 'r': value.r,
+                'k': value.n - value.r,
                 't': value.t,
                 'mem': mem_access.name
             }
@@ -242,32 +224,5 @@ def main(raw_args: Optional[list[str]] = None):
     LOGGER.info(f"ISD values no: {len(isd_values)} processes ")
 
 
-def test():
-    prime = 48371
-
-    r = prime
-    t = 131
-    skip_algos = [
-        BJMM, BJMMpdw, BJMMplus, BJMMdw, BothMay, MayOzerov, BallCollision
-    ]
-    #skip_algos= [BJMM,BothMay]
-    # skip_algos = []
-
-    for (n0, mem_access) in itertools.product(range(4, 5), MemAccess):
-        n = prime * n0
-        print(f"n {n}, n-k {r}, t {t}, mem_access {mem_access.name}")
-        sd = SDEstimator(n,
-                         n - r,
-                         t,
-                         excluded_algorithms=skip_algos,
-                         memory_access=mem_access.value)
-        results = sd.estimate()
-        print(results)
-        min_time = min(results.items(),
-                       key=lambda algo: algo[1]['estimate']['time'])
-        print(min_time)
-
-
 if __name__ == '__main__':
-    # test()
     main()

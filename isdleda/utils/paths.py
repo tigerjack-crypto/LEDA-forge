@@ -4,9 +4,9 @@ from os.path import join
 #     from measures.common import ValueDicts  # , Code, SecurityLevels
 
 # Quantum format
-OUT_FILES_Q_PART_FMT = ("{n:06}_{r:06}_{t:03}.{ext}")
+OUT_FILES_Q_PART_FMT = ("{n:06}_{k:06}_{t:03}.{ext}")
 # Classical format
-OUT_FILES_C_PART_FMT = ("{n:06}_{r:06}_{t:03}.{ext}")
+OUT_FILES_C_PART_FMT = ("{n:06}_{k:06}_{t:03}.{ext}")
 # Formula-only format
 OUT_FILE_FORMULA = ("0_symbolic")
 OUT_FILE_FORMULA_FMT = (OUT_FILE_FORMULA + ".{ext}")

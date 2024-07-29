@@ -1,10 +1,17 @@
+""" Quick cleaning
+"""
 import argparse
+from collections import defaultdict
+from dataclasses import asdict
 import logging
 import os
-from typing import Optional
+from typing import Dict, List, Optional
+import pathlib
 
+from isdleda.launchers.launch_data_analysis import AES_LAMBDAS
 from isdleda.launchers.launcher_utils import MemAccess, init_logger
-from isdleda.utils.export.export import load_from_pickle
+from isdleda.utils.common import Value
+from isdleda.utils.export.export import load_from_pickle, save_to_json
 from isdleda.utils.paths import (ISD_VALUES_FILE_PKL, OUT_FILE_FORMULA,
                                  OUT_FILES_CEB_DIR, OUT_FILES_QLB_DIR)
 
@@ -43,30 +50,76 @@ def _clean_wrong_values(out_type: str, files_ext: str):
         for filename in filter(lambda x: not x.startswith(OUT_FILE_FORMULA),
                                os.listdir(directory)):
             ff = filename[:-(len(files_ext) + 1)]
-            n, r, _ = ff.split('_')
-            if int(r) / int(n) > .5:
+            n, k, _ = ff.split('_')
+            if int(k) / int(n) < .5:
                 os.remove(os.path.join(directory, filename))
                 acc += 1
 
     return acc
 
 
-def _clean_oor_values(out_type: str, files_ext: str):
-    isd_values_ok = load_from_pickle(ISD_VALUES_FILE_PKL)
-    isd_values_ok_hashed = set(f"{val.n}_{val.r}_{val.t}.{files_ext}"
-                               for val in isd_values_ok)
-    acc = 0
+def _clean_oor_values():
+    isd_values = load_from_pickle(ISD_VALUES_FILE_PKL)
+    isd_values_hashed = {
+        f"{val.n:06}_{val.r:06}_{val.t:03}": val
+        for val in isd_values
+    }
+    isd_values_ok: Dict[str, List[Value]] = defaultdict(list)
+
+    # Check EB
     for mem_access in MemAccess:
-        directory = OUT_FILES_CEB_DIR.format(out_type=out_type,
+        directory = OUT_FILES_CEB_DIR.format(out_type='pkl',
                                              memaccess=mem_access.name)
         for filename in filter(lambda x: not x.startswith(OUT_FILE_FORMULA),
                                os.listdir(directory)):
-            if filename not in isd_values_ok_hashed:
-                input(filename)
-                acc += 1
-                # input(filename)
-                # os.remove(os.path.join(OUT_FILES_CEB_DIR, filename))
-    return acc
+            eb_val = load_from_pickle(directory + "/" + filename)
+            eb_time = eb_val['MinimumTime'][1]['estimate']['time']
+            _filename = pathlib.Path(filename).stem
+            print(eb_time)
+            if eb_time >= .8 * AES_LAMBDAS[0] and eb_time <= 1.2 * AES_LAMBDAS[
+                    -1]:
+                try:
+                    to_append = isd_values_hashed[_filename]
+                    isd_values_ok[_filename].append(to_append)
+                except KeyError:
+                    print(f"Key {_filename} not found in isd_values_hashed")
+            else:
+                pass
+
+    # Check LEDA on server
+    # directory ="../LEDAtools/out/results/json/"
+    # for filename in filter(lambda x: not x.startswith(OUT_FILE_FORMULA),
+    #                        os.listdir(directory)):
+    #     with open(directory + filename, 'r') as file:
+    #         leda_val = json.load(file)
+    #     min_leda = min(leda_val.get("MRA").get("C").get("value"), leda_val.get("KRA").get("C").get("value"))
+    #     max_leda = max(leda_val.get("MRA").get("C").get("value"), leda_val.get("KRA").get("C").get("value"))
+    #     _filename = pathlib.Path(filename).stem
+    #     if (min_leda <= 1.2 * AES_LAMBDAS[0])  and max_leda <= 1.2 * AES_LAMBDAS[-1]:
+    #         try:
+    #             to_append = isd_values_hashed[_filename]
+    #             isd_values_ok[_filename].append(to_append)
+    #         except KeyError:
+    #             print(f"Key {_filename} not found in isd_values_hashed")
+    # min_leda = min(leda_val.get("MRA").get("Q").get("value"), leda_val.get("KRA").get("Q").get("value"))
+    # max_leda = max(leda_val.get("MRA").get("Q").get("value"), leda_val.get("KRA").get("Q").get("value"))
+    # _filename = pathlib.Path(filename).stem
+    # if max_leda >= .7 * QAES_LAMBDAS[0] and min_leda <= 1.3 * QAES_LAMBDAS[-1]:
+    #     try:
+    #         to_append = isd_values_hashed[_filename]
+    #         isd_values_ok[_filename].append(to_append)
+    #     except KeyError:
+    #         print(f"Key {_filename} not found in isd_values_hashed")
+
+    print(f"Len ok values {len(isd_values_ok)}")
+    isd_values_nok_vals: List[Value] = []
+    for filename, value in isd_values_hashed.items():
+        if filename not in isd_values_ok:
+            isd_values_nok_vals.append(value)
+    ISD_USELESS_VALUES = 'out/isd_values_clean_oor.json'
+    print(f"JSONing useless to {ISD_USELESS_VALUES}")
+    save_to_json(ISD_USELESS_VALUES,
+                 [asdict(x) for x in sorted(isd_values_nok_vals)])
 
 
 def main(raw_args: Optional[list[str]] = None):
@@ -93,8 +146,7 @@ def main(raw_args: Optional[list[str]] = None):
         dels = _clean_wrong_values(out_type, file_ext)
         print(f"Deleted {dels} wrong files")
     if namespace.clean_oor:
-        dels = _clean_oor_values(out_type, file_ext)
-        print(f"Deleted {dels} Out-Of-Range files")
+        dels = _clean_oor_values()
     if namespace.clean_wrong or namespace.clean_oor:
         return
 
