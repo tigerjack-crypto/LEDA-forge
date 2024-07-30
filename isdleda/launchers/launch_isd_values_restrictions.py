@@ -14,6 +14,9 @@ from sortedcontainers import SortedDict
 
 from dataclasses import asdict
 
+import functools
+import operator
+
 # Official NIST values
 AES_LAMBDAS = (143, 207, 272)
 # Best values obtained for Jan+22 Ph.D. Thesis, table 6.5 (Jan+22).
@@ -23,15 +26,23 @@ QAES_LAMBDAS = (154, 219, 283)
 OUT_FILE_LEDA_VALS = 'out/leda_values_from_restrictions.json'
 OUT_FILE_ISD_VALS = 'out/isd_values_from_restrictions.json'
 
-import functools
-import operator
+# We want to explore the region around a given lambda
+C_INTERVALS_FUNCTS = (functools.partial(operator.add, -30),
+                      functools.partial(operator.add, 30))
+Q_INTERVALS_FUNCTS = (functools.partial(operator.add, -30),
+                      functools.partial(operator.add, 30))
+# C_INTERVALS_FUNCTS = (functools.partial(operator.mul, .8), functools.partial(operator.mul, 1.2))
+# Q_INTERVALS_FUNCTS = (functools.partial(operator.mul, .8), functools.partial(operator.mul, 1.2))
 
-C_RANGES = (functools.partial(operator.add,
-                              -30), functools.partial(operator.add, 30))
-Q_RANGES = (functools.partial(operator.add,
-                              -30), functools.partial(operator.add, 30))
-# C_RANGES = (functools.partial(operator.mul, .8), functools.partial(operator.mul, 1.2))
-# Q_RANGES = (functools.partial(operator.mul, .8), functools.partial(operator.mul, 1.2))
+# We want to emit warning if the first value explored is too close to the
+# actual value. F.e., if we have a target lambda of 100, and the first (lowest)
+# t explored produces a lambda = 98, we are too close.
+#
+# The same applies for the upper bound, so f.e. at the last iteration we have a value of 102.
+C_INTERVALS_WARN_FUNCTS = (functools.partial(operator.add, -10),
+                           functools.partial(operator.add, -5))
+Q_INTERVALS_WARN_FUNCTS = (functools.partial(operator.add, -15),
+                           functools.partial(operator.add, -10))
 
 
 def get_complexity(n, k, t) -> Optional[Tuple[float, float]]:
@@ -119,7 +130,8 @@ def param(
         # for the given value, find the minimum/maximum t
         ts_sorted = sorted(filenames_idx_by_p[p][n0])
         tmin, tmax = ts_sorted[0], ts_sorted[-1]
-        for t in range(tmin, tmax + 1):
+        trange = range(tmin, tmax + 1)
+        for i, t in enumerate(trange):
             # check only the values reaching the minimum threshold
             res = get_complexity(n, k, t)
             if res is None:
@@ -127,13 +139,39 @@ def param(
                 continue  # next t
             c_compl, q_compl = res
             red = log2(p) / 2
-            if c_compl - red <= C_RANGES[0](
-                    c_lambd) or 2 * (q_compl - red) <= Q_RANGES[0](q_lambd):
+            caes = c_compl - red
+            qaes = 2 * (q_compl - red)
+            caes_diff_low = caes - C_INTERVALS_FUNCTS[0](c_lambd)
+            qaes_diff_low = qaes - Q_INTERVALS_FUNCTS[0](q_lambd)
+            caes_diff_high = caes - C_INTERVALS_FUNCTS[1](c_lambd)
+            qaes_diff_high = qaes - Q_INTERVALS_FUNCTS[1](q_lambd)
+            if caes_diff_low <= 0 or qaes_diff_low <= 0:
                 continue  # next t
-            if c_compl - red >= C_RANGES[1](
-                    c_lambd) or 2 * (q_compl - red) >= Q_RANGES[1](q_lambd):
+            if caes_diff_high >= 0 or qaes_diff_high >= 0:
                 break  # do not keep increasing the ts, it's useless
-            complexities['MRA'] = (c_compl - red, 2 * (q_compl - red))
+            complexities['MRA'] = (caes, qaes)
+            # if at the first iteration I get a lower value which is
+            #
+            # - too close to the lower bound (f.e., clambda = 100, caes = 98 -> caes_diff_low = 2) OR
+            #
+            # - too far from the lower bound (f.e., clambda = 100, caes = +120)
+            # too far away from it
+            # TODO
+            if i == 0 and not (C_INTERVALS_WARN_FUNCTS[0]
+                               (caes) <= c_lambd <= C_INTERVALS_WARN_FUNCTS[1]
+                               (caes) and Q_INTERVALS_WARN_FUNCTS[0](qaes) <=
+                               q_lambd <= Q_INTERVALS_WARN_FUNCTS[1](qaes)):
+                print(f"WARNING: lower frontier for t (p = {p}, n0 = {n0})! ")
+                print(f"(c_lambda, q_lambda) = ({c_lambd, q_lambd})")
+                print(f"(c_aes, q_aes) = ({caes, qaes})")
+            if i == len(trange) - 1 and not (
+                    C_INTERVALS_WARN_FUNCTS[0]
+                (caes) <= c_lambd <= C_INTERVALS_WARN_FUNCTS[1](caes)
+                    and Q_INTERVALS_WARN_FUNCTS[0]
+                (qaes) <= q_lambd <= Q_INTERVALS_WARN_FUNCTS[1](qaes)):
+                print(f"WARNING: upper frontier for t (p = {p}, n0 = {n0})! ")
+                print(f"(c_lambda, q_lambda) = ({c_lambd, q_lambd})")
+                print(f"(c_aes, q_aes) = ({caes, qaes})")
 
             # arbitrary start range, considering that t=(2*v, 2*v, n0*v)
             vmin = t // n0
@@ -146,7 +184,8 @@ def param(
             if vmax % 2 == 0:
                 vmax += 1
 
-            for v in range(vmin, vmax, 2):
+            vrange = range(vmin, vmax, 2)
+            for j, v in enumerate(vrange):
                 # KRA1
                 _n = n0 * p
                 _k = (n0 - 1) * p
@@ -157,15 +196,32 @@ def param(
                 if res is None:
                     continue  # next v
                 c_compl, q_compl = res
-                secure_ok_low = (c_compl - red) >= C_RANGES[0](
-                    c_lambd) and 2 * (q_compl - red) >= Q_RANGES[0](q_lambd)
+                caes = c_compl - red
+                qaes = 2 * (q_compl - red)
+                secure_ok_low = caes >= C_INTERVALS_FUNCTS[0](
+                    c_lambd) and qaes >= Q_INTERVALS_FUNCTS[0](q_lambd)
                 if not secure_ok_low:
                     continue  # not reaching min security, next v
-                secure_ok_high = (c_compl - red) <= Q_RANGES[1](
-                    c_lambd) and 2 * (q_compl - red) <= Q_RANGES[1](q_lambd)
+                secure_ok_high = caes <= C_INTERVALS_FUNCTS[1](
+                    c_lambd) and qaes <= Q_INTERVALS_FUNCTS[1](q_lambd)
                 if not secure_ok_high:
                     break  # security too high, do not keep trying greater vs
-                complexities['KRA1'] = (c_compl - red, 2 * (q_compl - red))
+                if j == 0 and not (C_INTERVALS_WARN_FUNCTS[0]
+                                (caes) <= c_lambd <= C_INTERVALS_WARN_FUNCTS[1]
+                                (caes) and Q_INTERVALS_WARN_FUNCTS[0](qaes) <=
+                                q_lambd <= Q_INTERVALS_WARN_FUNCTS[1](qaes)):
+                    print(f"WARNING: lower frontier for (p = {p}, n0 = {n0}, v {v})! ")
+                    print(f"(c_lambda, q_lambda) = ({c_lambd, q_lambd})")
+                    print(f"(c_aes, q_aes) = ({caes, qaes})")
+                if j == len(trange) - 1 and not (
+                        C_INTERVALS_WARN_FUNCTS[0]
+                    (caes) <= c_lambd <= C_INTERVALS_WARN_FUNCTS[1](caes)
+                        and Q_INTERVALS_WARN_FUNCTS[0]
+                    (qaes) <= q_lambd <= Q_INTERVALS_WARN_FUNCTS[1](qaes)):
+                    print(f"WARNING: upper frontier for v (p = {p}, n0 = {n0}, v {v})! ")
+                    print(f"(c_lambda, q_lambda) = ({c_lambd, q_lambd})")
+                    print(f"(c_aes, q_aes) = ({caes, qaes})")
+                complexities['KRA1'] = (caes, qaes)
                 # KRA3
                 _n = n0 * p
                 _k = (n0 - 1) * p
@@ -175,15 +231,32 @@ def param(
                 if res is None:
                     continue  # next t
                 c_compl, q_compl = res
-                secure_ok_low = (c_compl - red) >= C_RANGES[0](
-                    c_lambd) and 2 * (q_compl - red) >= Q_RANGES[0](q_lambd)
+                caes = c_compl - red
+                qaes = 2 * (q_compl - red)
+                secure_ok_low = caes >= C_INTERVALS_FUNCTS[0](
+                    c_lambd) and qaes >= Q_INTERVALS_FUNCTS[0](q_lambd)
                 if not secure_ok_low:
                     continue  # not reaching min security, next v
-                secure_ok_high = (c_compl - red) <= Q_RANGES[1](
-                    c_lambd) and 2 * (q_compl - red) <= Q_RANGES[1](q_lambd)
+                secure_ok_high = caes <= C_INTERVALS_FUNCTS[1](
+                    c_lambd) and qaes <= Q_INTERVALS_FUNCTS[1](q_lambd)
                 if not secure_ok_high:
                     break  # security too high, do not keep trying greater vs
-                complexities['KRA3'] = (c_compl - red, 2 * (q_compl - red))
+                if j == 0 and not (C_INTERVALS_WARN_FUNCTS[0]
+                                (caes) <= c_lambd <= C_INTERVALS_WARN_FUNCTS[1]
+                                (caes) and Q_INTERVALS_WARN_FUNCTS[0](qaes) <=
+                                q_lambd <= Q_INTERVALS_WARN_FUNCTS[1](qaes)):
+                    print(f"WARNING: lower frontier for (p = {p}, n0 = {n0}, v {v})! ")
+                    print(f"(c_lambda, q_lambda) = ({c_lambd, q_lambd})")
+                    print(f"(c_aes, q_aes) = ({caes, qaes})")
+                if j == len(trange) - 1 and not (
+                        C_INTERVALS_WARN_FUNCTS[0]
+                    (caes) <= c_lambd <= C_INTERVALS_WARN_FUNCTS[1](caes)
+                        and Q_INTERVALS_WARN_FUNCTS[0]
+                    (qaes) <= q_lambd <= Q_INTERVALS_WARN_FUNCTS[1](qaes)):
+                    print(f"WARNING: upper frontier for v (p = {p}, n0 = {n0}, v {v})! ")
+                    print(f"(c_lambda, q_lambda) = ({c_lambd, q_lambd})")
+                    print(f"(c_aes, q_aes) = ({caes, qaes})")
+                complexities['KRA3'] = (caes, qaes)
 
                 if n0 != 2:
                     # KRA2
@@ -195,16 +268,31 @@ def param(
                     if res is None:
                         continue  # next v
                     c_compl, q_compl = res
-                    secure_ok_low = (c_compl -
-                                     red) >= C_RANGES[0](c_lambd) and 2 * (
-                                         q_compl - red) >= Q_RANGES[0](q_lambd)
+                    caes = c_compl - red
+                    qaes = 2 * (q_compl - red)
+                    secure_ok_low = caes >= C_INTERVALS_FUNCTS[0](
+                        c_lambd) and qaes >= Q_INTERVALS_FUNCTS[0](q_lambd)
                     if not secure_ok_low:
                         continue  # not reaching min security, next v
-                    secure_ok_high = (
-                        c_compl - red) <= Q_RANGES[1](c_lambd) and 2 * (
-                            q_compl - red) <= Q_RANGES[1](q_lambd)
+                    secure_ok_high = caes <= C_INTERVALS_FUNCTS[1](
+                        c_lambd) and qaes <= Q_INTERVALS_FUNCTS[1](q_lambd)
                     if not secure_ok_high:
                         break  # security too high, do not keep trying greater vs
+                    if j == 0 and not (C_INTERVALS_WARN_FUNCTS[0]
+                                    (caes) <= c_lambd <= C_INTERVALS_WARN_FUNCTS[1]
+                                    (caes) and Q_INTERVALS_WARN_FUNCTS[0](qaes) <=
+                                    q_lambd <= Q_INTERVALS_WARN_FUNCTS[1](qaes)):
+                        print(f"WARNING: lower frontier for (p = {p}, n0 = {n0}, v {v})! ")
+                        print(f"(c_lambda, q_lambda) = ({c_lambd, q_lambd})")
+                        print(f"(c_aes, q_aes) = ({caes, qaes})")
+                    if j == len(trange) - 1 and not (
+                            C_INTERVALS_WARN_FUNCTS[0]
+                            (caes) <= c_lambd <= C_INTERVALS_WARN_FUNCTS[1](caes)
+                            and Q_INTERVALS_WARN_FUNCTS[0]
+                            (qaes) <= q_lambd <= Q_INTERVALS_WARN_FUNCTS[1](qaes)):
+                        print(f"WARNING: upper frontier for v (p = {p}, n0 = {n0}, v {v})! ")
+                        print(f"(c_lambda, q_lambda) = ({c_lambd, q_lambd})")
+                        print(f"(c_aes, q_aes) = ({caes, qaes})")
                     complexities['KRA2'] = (c_compl - red, 2 * (q_compl - red))
                 leda_values.append((p, n0, v, t, complexities))
                 isd_values.add(Value(n, n - k, t))
@@ -271,12 +359,8 @@ def main():
             c_lambda,
             q_lambda,  # filenames,
             filenames_idx_by_p_sorted)
-        print(
-            f"LEDA values obtained: {len(leda_values)}"
-        )
-        print(
-            f"ISD values obtained {len(isd_values)}"
-        )
+        print(f"LEDA values obtained: {len(leda_values)}")
+        print(f"ISD values obtained {len(isd_values)}")
         print("*" * 80)
         leda_vals[level] = leda_values
         isd_vals.update(isd_values)
