@@ -266,15 +266,16 @@ def main():
     isd_vals = set()
     print(f"Values available {len(filenames)}")
     for level, c_lambda, q_lambda in zip((1, 3, 5), AES_LAMBDAS, QAES_LAMBDAS):
+        print(f" Level {level}: (AES, QAES) = ({c_lambda}, {q_lambda})")
         leda_values, isd_values = param(
             c_lambda,
             q_lambda,  # filenames,
             filenames_idx_by_p_sorted)
         print(
-            f"LEDA values obtained {len(leda_values)} for (AES, QAES) = ({c_lambda},{q_lambda})"
+            f"LEDA values obtained: {len(leda_values)}"
         )
         print(
-            f"ISD values obtained {len(isd_values)} for (AES, QAES) = ({c_lambda},{q_lambda})"
+            f"ISD values obtained {len(isd_values)}"
         )
         print("*" * 80)
         leda_vals[level] = leda_values
