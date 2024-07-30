@@ -20,6 +20,10 @@ OUT_FILES_CEB_TYPE_DIR: str = join(".", "out", "cisd_eb", "{out_type}")
 OUT_FILES_CEB_DIR: str = join(OUT_FILES_CEB_TYPE_DIR, "{memaccess}")
 OUT_FILES_CEB_FMT: str = join(OUT_FILES_CEB_DIR, OUT_FILES_C_PART_FMT)
 
+# Classical, Leda Tool
+OUT_FILES_CLEDA_TYPE_DIR: str = join(".", "out", "cisd_leda", "{out_type}")
+OUT_FILES_CLEDA_FMT: str = join(OUT_FILES_CLEDA_TYPE_DIR, OUT_FILES_C_PART_FMT)
+
 # PRIMES_PATH = "isdleda/assets/proper_primes.csv"
 PRIMES_FILE_CSV = join("assets", "proper_primes.csv")
 
