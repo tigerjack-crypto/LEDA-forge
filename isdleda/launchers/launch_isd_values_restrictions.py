@@ -1,15 +1,18 @@
-# For the quantum part, the threshold against AES is given by twice the depth
+# For the quantum part, the threshold agExploration values obtainedgiven by twice the depth
 # of the circuit (check Eq. 6.6 of my phd.thesis)
-import os
 import itertools
 import json
+import os
 from collections import defaultdict
-from sortedcontainers import SortedDict
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+from isdleda.utils.common import Value
 from isdleda.utils.paths import OUT_FILES_CLEDA_FMT, OUT_FILES_CLEDA_TYPE_DIR
 from numpy import log2
+from sortedcontainers import SortedDict
+
+from dataclasses import asdict
 
 # Official NIST values
 AES_LAMBDAS = (143, 207, 272)
@@ -17,7 +20,18 @@ AES_LAMBDAS = (143, 207, 272)
 QAES_LAMBDAS = (154, 219, 283)
 # Values from Jaques, used by NIST in additional signature calls
 # QAES_LAMBDAS = (157, 221, 285)
-OUT_FILE = 'out/isd_values_restricted.json'
+OUT_FILE_LEDA_VALS = 'out/leda_values_from_restrictions.json'
+OUT_FILE_ISD_VALS = 'out/isd_values_from_restrictions.json'
+
+import functools
+import operator
+
+C_RANGES = (functools.partial(operator.add,
+                              -30), functools.partial(operator.add, 30))
+Q_RANGES = (functools.partial(operator.add,
+                              -30), functools.partial(operator.add, 30))
+# C_RANGES = (functools.partial(operator.mul, .8), functools.partial(operator.mul, 1.2))
+# Q_RANGES = (functools.partial(operator.mul, .8), functools.partial(operator.mul, 1.2))
 
 
 def get_complexity(n, k, t) -> Optional[Tuple[float, float]]:
@@ -81,8 +95,12 @@ def param(
     q_lambd: int,
     filenames_idx_by_p: Dict[int, Dict[int, Dict[int, str]]],
 ):
+    # These are the leda values. Each entry is a tuple (p, n0, v, t, (C_complexity, Q_complexity))
+    leda_values = []
+    # These are the ISD values. Each entry is a Value with (n, r, t)
+    isd_values = set()
+
     ps_sorted = sorted(filenames_idx_by_p)
-    values = []
     pmin, pmax = ps_sorted[0], ps_sorted[
         -1]  # min value of r given the filenames
     # to_generate: Set[Value]
@@ -109,11 +127,11 @@ def param(
                 continue  # next t
             c_compl, q_compl = res
             red = log2(p) / 2
-            if c_compl - red <= .8 * c_lambd or 2 * (q_compl -
-                                                     red) <= .8 * q_lambd:
+            if c_compl - red <= C_RANGES[0](
+                    c_lambd) or 2 * (q_compl - red) <= Q_RANGES[0](q_lambd):
                 continue  # next t
-            if c_compl - red >= 1.2 * c_lambd or 2 * (q_compl -
-                                                      red) >= 1.2 * q_lambd:
+            if c_compl - red >= C_RANGES[1](
+                    c_lambd) or 2 * (q_compl - red) >= Q_RANGES[1](q_lambd):
                 break  # do not keep increasing the ts, it's useless
             complexities['MRA'] = (c_compl - red, 2 * (q_compl - red))
 
@@ -139,12 +157,12 @@ def param(
                 if res is None:
                     continue  # next v
                 c_compl, q_compl = res
-                secure_ok_low = (c_compl - red) >= .8 * c_lambd and 2 * (
-                    q_compl - red) >= .8 * q_lambd
+                secure_ok_low = (c_compl - red) >= C_RANGES[0](
+                    c_lambd) and 2 * (q_compl - red) >= Q_RANGES[0](q_lambd)
                 if not secure_ok_low:
                     continue  # not reaching min security, next v
-                secure_ok_high = (c_compl - red) <= 1.2 * c_lambd and 2 * (
-                    q_compl - red) <= 1.2 * q_lambd
+                secure_ok_high = (c_compl - red) <= Q_RANGES[1](
+                    c_lambd) and 2 * (q_compl - red) <= Q_RANGES[1](q_lambd)
                 if not secure_ok_high:
                     break  # security too high, do not keep trying greater vs
                 complexities['KRA1'] = (c_compl - red, 2 * (q_compl - red))
@@ -157,42 +175,45 @@ def param(
                 if res is None:
                     continue  # next t
                 c_compl, q_compl = res
-                secure_ok_low = (c_compl - red) >= .8 * c_lambd and 2 * (
-                    q_compl - red) >= .8 * q_lambd
+                secure_ok_low = (c_compl - red) >= C_RANGES[0](
+                    c_lambd) and 2 * (q_compl - red) >= Q_RANGES[0](q_lambd)
                 if not secure_ok_low:
                     continue  # not reaching min security, next v
-                secure_ok_high = (c_compl - red) <= 1.2 * c_lambd and 2 * (
-                    q_compl - red) <= 1.2 * q_lambd
+                secure_ok_high = (c_compl - red) <= Q_RANGES[1](
+                    c_lambd) and 2 * (q_compl - red) <= Q_RANGES[1](q_lambd)
                 if not secure_ok_high:
                     break  # security too high, do not keep trying greater vs
                 complexities['KRA3'] = (c_compl - red, 2 * (q_compl - red))
-                values.append((n, k, t, v, complexities))
-                if n0 == 2:
-                    continue  # next v, useless to compute KRA2
-                # KRA2
-                _n = n0 * p
-                _k = 2 * p
-                _t = 2 * v
-                red = log2(n0 * p)
-                res = get_complexity(_n, _k, _t)
-                if res is None:
-                    continue  # next v
-                c_compl, q_compl = res
-                secure_ok_low = (c_compl - red) >= .8 * c_lambd and 2 * (
-                    q_compl - red) >= .8 * q_lambd
-                if not secure_ok_low:
-                    continue  # not reaching min security, next v
-                secure_ok_high = (c_compl - red) <= 1.2 * c_lambd and 2 * (
-                    q_compl - red) <= 1.2 * q_lambd
-                if not secure_ok_high:
-                    break  # security too high, do not keep trying greater vs
-                complexities['KRA2'] = (c_compl - red, 2 * (q_compl - red))
+
+                if n0 != 2:
+                    # KRA2
+                    _n = n0 * p
+                    _k = 2 * p
+                    _t = 2 * v
+                    red = log2(n0 * p)
+                    res = get_complexity(_n, _k, _t)
+                    if res is None:
+                        continue  # next v
+                    c_compl, q_compl = res
+                    secure_ok_low = (c_compl -
+                                     red) >= C_RANGES[0](c_lambd) and 2 * (
+                                         q_compl - red) >= Q_RANGES[0](q_lambd)
+                    if not secure_ok_low:
+                        continue  # not reaching min security, next v
+                    secure_ok_high = (
+                        c_compl - red) <= Q_RANGES[1](c_lambd) and 2 * (
+                            q_compl - red) <= Q_RANGES[1](q_lambd)
+                    if not secure_ok_high:
+                        break  # security too high, do not keep trying greater vs
+                    complexities['KRA2'] = (c_compl - red, 2 * (q_compl - red))
+                leda_values.append((p, n0, v, t, complexities))
+                isd_values.add(Value(n, n - k, t))
 
             # end v loop
         # end t loop
     # end p, n0 loop
 
-    return values
+    return leda_values, isd_values
 
 
 def get_hardcoded_filenames():
@@ -241,21 +262,28 @@ def main():
     filenames = os.listdir(OUT_FILES_CLEDA_TYPE_DIR.format(out_type='json'))
     # filenames = get_hardcoded_filenames()
     filenames_idx_by_p_sorted = get_filenames(filenames)
-    vals = {}
-    for c_lambda, q_lambda in zip(AES_LAMBDAS, QAES_LAMBDAS):
-        values = param(
+    leda_vals = {}
+    isd_vals = set()
+    print(f"Values available {len(filenames)}")
+    for level, c_lambda, q_lambda in zip((1, 3, 5), AES_LAMBDAS, QAES_LAMBDAS):
+        leda_values, isd_values = param(
             c_lambda,
             q_lambda,  # filenames,
             filenames_idx_by_p_sorted)
-        print(f"len filenames {len(filenames)}")
         print(
-            f"len filenames {len(values)} for (AES, QAES) = ({c_lambda},{q_lambda})"
+            f"LEDA values obtained {len(leda_values)} for (AES, QAES) = ({c_lambda},{q_lambda})"
+        )
+        print(
+            f"ISD values obtained {len(isd_values)} for (AES, QAES) = ({c_lambda},{q_lambda})"
         )
         print("*" * 80)
-        vals[1] = values
-    with open(OUT_FILE, 'w') as fp:
-        json.dump(vals, fp)
+        leda_vals[level] = leda_values
+        isd_vals.update(isd_values)
+    with open(OUT_FILE_LEDA_VALS, 'w') as fp:
+        json.dump(leda_vals, fp, indent=2)
 
+    with open(OUT_FILE_ISD_VALS, 'w') as fp:
+        json.dump([asdict(x) for x in sorted(isd_vals)], fp, indent=2)
 
 
 if __name__ == '__main__':
