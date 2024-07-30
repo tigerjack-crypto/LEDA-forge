@@ -22,15 +22,17 @@ def main():
     df = pd.DataFrame(data, columns=headers)
     df = df.astype({
         'n': 'int',
-        'r': 'int',
+        'k': 'int',
         't': 'int',
-        'EB Stern': 'float',
-        'LEDA Stern': 'float',
+        'EB Stern time': 'float',
+        'LEDA Stern time': 'float',
+        'EB GJE': 'float',
+        'LEDA GJE': 'float',
         'EB Stern p': 'int',
-        'EB Stern l': 'int',
-        'EB Stern M4R': 'int',
         'LEDA Stern p': 'int',
-        'LEDA Stern l': 'int'
+        'EB Stern l': 'int',
+        'LEDA Stern l': 'int',
+        'EB Stern M4R': 'int',
     })
     # ns = []
     # ks = []
@@ -41,30 +43,24 @@ def main():
 
     # Convert appropriate columns to numeric types
     df['n'] = df['n'].astype(int)
-    df['r'] = df['r'].astype(int)
+    df['k'] = df['k'].astype(int)
     df['t'] = df['t'].astype(int)
-    df['EB Stern'] = df['EB Stern'].astype(float)
-    df['LEDA Stern'] = df['LEDA Stern'].astype(float)
+    df['EB Stern time'] = df['EB Stern time'].astype(float)
+    df['LEDA Stern time'] = df['LEDA Stern time'].astype(float)
     df['EB Stern p'] = df['EB Stern p'].astype(int)
-    df['EB Stern l'] = df['EB Stern l'].astype(int)
-    df['EB Stern M4R'] = df['EB Stern M4R'].astype(int)
     df['LEDA Stern p'] = df['LEDA Stern p'].astype(int)
+    df['EB Stern l'] = df['EB Stern l'].astype(int)
     df['LEDA Stern l'] = df['LEDA Stern l'].astype(int)
+    df['EB GJE'] = df['EB GJE'].astype(float)
+    df['LEDA GJE'] = df['LEDA GJE'].astype(float)
+    df['EB Stern M4R'] = df['EB Stern M4R'].astype(int)
 
     # Calculate the difference and the ratio
-    df['Difference'] = df['EB Stern'] - df['LEDA Stern']
-    df['k'] = df['n'] - df['r']
+    df['Difference'] = df['EB Stern time'] - df['LEDA Stern time']
+    # df['k'] = df['n'] - df['r']
     df['Ratio'] = df['k'] / df['n']
 
     fig = go.Figure()
-    # Create the 3D scatter plot
-    # fig.add_trace(
-    #     go.Scatter3d(
-    #         x=df['n'],
-    #         y=df['t'],
-    #         z=df['Difference'],
-    #         mode='markers',
-    #     ))
 
     # Create the 3D scatter plot
     fig = px.scatter_3d(df,

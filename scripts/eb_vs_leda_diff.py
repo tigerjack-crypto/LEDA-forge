@@ -1,7 +1,6 @@
 import csv
 import json
 import os
-import pickle
 from pathlib import Path
 
 # DIR1 = os.path.join("sshfs_mountpoint", "vc", "isd-leda", "out", "cisd_eb",
@@ -11,7 +10,7 @@ from pathlib import Path
 
 # Server directories and files
 # DIR1 = '/home/sperriello/vc/isd-leda/out/cisd_eb/json/MEM_LOG/'
-DIR1 = '/home/sperriello/vc/isd-leda/out/cisd_eb_original/pkl/MEM_LOG/'
+DIR1 = '/home/sperriello/vc/isd-leda/out/cisd_eb/json/MEM_LOG/'
 DIR2 = '/home/sperriello/vc/LEDAtools/out/results/json/'
 OUT_FILE = 'out/eb_vs_leda_diff.csv'
 
@@ -59,8 +58,8 @@ def main():
             eb_path = os.path.join(DIR1, filename)
             leda_path = os.path.join(DIR2, filename)
 
-            with open(eb_path + ".pkl", "rb") as fp:
-                eb_val = pickle.load(fp)
+            with open(eb_path + ".json", "r") as fp:
+                eb_val = json.load(fp)
             eb_val = eb_val['Stern']
             eb_val_estimate = eb_val.get("estimate")
             eb_time = eb_val_estimate.get("time")
