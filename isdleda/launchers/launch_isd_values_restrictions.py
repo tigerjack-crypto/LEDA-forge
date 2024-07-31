@@ -1,21 +1,21 @@
-# For the quantum part, the threshold agExploration values obtainedgiven by twice the depth
-# of the circuit (check Eq. 6.6 of my phd.thesis)
+import functools
 import itertools
 import json
+import logging
+import operator
 import os
 from collections import defaultdict
+from dataclasses import asdict
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+from isdleda.launchers.launcher_utils import init_logger
 from isdleda.utils.common import Value
 from isdleda.utils.paths import OUT_FILES_CLEDA_FMT, OUT_FILES_CLEDA_TYPE_DIR
 from numpy import log2
 from sortedcontainers import SortedDict
 
-from dataclasses import asdict
-
-import functools
-import operator
+LOGGER = logging.getLogger(__name__)
 
 # Official NIST values
 AES_LAMBDAS = (143, 207, 272)
@@ -23,26 +23,64 @@ AES_LAMBDAS = (143, 207, 272)
 QAES_LAMBDAS = (154, 219, 283)
 # Values from Jaques, used by NIST in additional signature calls
 # QAES_LAMBDAS = (157, 221, 285)
-OUT_FILE_LEDA_VALS = 'out/leda_values_from_restrictions.json'
-OUT_FILE_ISD_VALS = 'out/isd_values_from_restrictions.json'
 
-# We want to explore the region around a given lambda
+OUT_FILE_LEDA_VALS = 'out/values/from_restrictions/leda_values.json'
+OUT_FILE_ISD_VALS = 'out/values/from_restrictions/isd_values.json'
+OUT_FILE_ISD_VALS_TO_COMPUTE = 'out/values/from_restrictions/isd_values_to_compute.json'
+
+# We want to explore the region around a given lambda; that is, [lamba + val[0], lambda + val[1]]
 C_INTERVALS_FUNCTS = (functools.partial(operator.add, -30),
                       functools.partial(operator.add, 30))
-Q_INTERVALS_FUNCTS = (functools.partial(operator.add, -30),
-                      functools.partial(operator.add, 30))
+# I am less conservative with quantum. If there's a classical speed-up of X,
+# the quantum speed-up would roughly be sqrt(X)
+Q_INTERVALS_FUNCTS = (functools.partial(operator.add, -20),
+                      functools.partial(operator.add, 20))
 # C_INTERVALS_FUNCTS = (functools.partial(operator.mul, .8), functools.partial(operator.mul, 1.2))
 # Q_INTERVALS_FUNCTS = (functools.partial(operator.mul, .8), functools.partial(operator.mul, 1.2))
 
 # We want to emit warning if the first value explored is too close to the
 # actual value. F.e., if we have a target lambda of 100, and the first (lowest)
-# t explored produces a lambda = 98, we are too close.
+# t explored produces a lambda = 98, we started the exploration from a value
+# which is too close to the frontier. The same applies for the upper bound, so
+# f.e. at the last iteration we have a value of 102.
 #
-# The same applies for the upper bound, so f.e. at the last iteration we have a value of 102.
-C_INTERVALS_WARN_FUNCTS = (functools.partial(operator.add, -10),
-                           functools.partial(operator.add, -5))
+# These intervals are interpred as: If first value explored and CAES >= lambda
+# + val[0] -> WARN. If last value explored and CAES <= lambda + val[1] -> WARN
+
+C_INTERVALS_WARN_FUNCTS = (functools.partial(operator.add, -20),
+                           functools.partial(operator.add, +20))
 Q_INTERVALS_WARN_FUNCTS = (functools.partial(operator.add, -15),
-                           functools.partial(operator.add, -10))
+                           functools.partial(operator.add, +15))
+
+
+def check_frontier(low: bool, caes, c_lambda, qaes, q_lambda, msg: str, n, k,
+                   t):
+    """Either low or up frontier"""
+    isd_values = []
+    # exploring_range
+    # low (i.e., first value explored) and (caes> c_lambda - 20 or qaes> q_lambda - 20)
+    if low and (caes > C_INTERVALS_WARN_FUNCTS[0](c_lambda)
+                or qaes > Q_INTERVALS_WARN_FUNCTS[0](q_lambda)):
+        LOGGER.warning(f"WARNING: lower frontier! ")
+        LOGGER.warning(msg)
+        LOGGER.warning(f"(c_lambda, q_lambda) = ({c_lambda, q_lambda})")
+        LOGGER.warning(f"(c_aes, q_aes) = ({caes, qaes})")
+        LOGGER.warning(f"{n}_{k}_{t}")
+        for i in range(-15, 15):
+            val = Value(n, n - k, t + i)
+            isd_values.append(val)
+    # high (i.e., last value explored) and (caes< c_lambda + 20 or qaes< q_lambda + 20)
+    if not low and (caes < C_INTERVALS_WARN_FUNCTS[1](c_lambda)
+                    or qaes < Q_INTERVALS_WARN_FUNCTS[1](q_lambda)):
+        LOGGER.warning("WARNING: upper frontier! ")
+        LOGGER.warning(msg)
+        LOGGER.warning(f"(c_lambda, q_lambda) = ({c_lambda, q_lambda})")
+        LOGGER.warning(f"(c_aes, q_aes) = ({caes, qaes})")
+        LOGGER.warning(f"{n}_{k}_{t}")
+        for i in range(-15, 15):
+            val = Value(n, n - k, t + i)
+            isd_values.append(val)
+    return isd_values
 
 
 def get_complexity(n, k, t) -> Optional[Tuple[float, float]]:
@@ -108,8 +146,13 @@ def param(
 ):
     # These are the leda values. Each entry is a tuple (p, n0, v, t, (C_complexity, Q_complexity))
     leda_values = []
-    # These are the ISD values. Each entry is a Value with (n, r, t)
-    isd_values = set()
+    # These are the right ISD values to explore in the intervals around the
+    # lambda values. Each entry is a Value with (n, r, t)
+    isd_values = []
+
+    # These are the ISD values for which additional exploration is needed, since probably
+    # there have been values too close to the frontier
+    isd_values_to_compute = []
 
     ps_sorted = sorted(filenames_idx_by_p)
     pmin, pmax = ps_sorted[0], ps_sorted[
@@ -140,6 +183,8 @@ def param(
             c_compl, q_compl = res
             red = log2(p) / 2
             caes = c_compl - red
+            # For the quantum part, the threshold values are given by twice the
+            # depth of the circuit (check Eq. 6.6 of my phd.thesis)
             qaes = 2 * (q_compl - red)
             caes_diff_low = caes - C_INTERVALS_FUNCTS[0](c_lambd)
             qaes_diff_low = qaes - Q_INTERVALS_FUNCTS[0](q_lambd)
@@ -148,30 +193,24 @@ def param(
             if caes_diff_low <= 0 or qaes_diff_low <= 0:
                 continue  # next t
             if caes_diff_high >= 0 or qaes_diff_high >= 0:
-                break  # do not keep increasing the ts, it's useless
-            complexities['MRA'] = (caes, qaes)
+                break  # do not keep increasing the ts, it's useless, we'll have higher values
             # if at the first iteration I get a lower value which is
             #
             # - too close to the lower bound (f.e., clambda = 100, caes = 98 -> caes_diff_low = 2) OR
             #
             # - too far from the lower bound (f.e., clambda = 100, caes = +120)
             # too far away from it
-            # TODO
-            if i == 0 and not (C_INTERVALS_WARN_FUNCTS[0]
-                               (caes) <= c_lambd <= C_INTERVALS_WARN_FUNCTS[1]
-                               (caes) and Q_INTERVALS_WARN_FUNCTS[0](qaes) <=
-                               q_lambd <= Q_INTERVALS_WARN_FUNCTS[1](qaes)):
-                print(f"WARNING: lower frontier for t (p = {p}, n0 = {n0})! ")
-                print(f"(c_lambda, q_lambda) = ({c_lambd, q_lambd})")
-                print(f"(c_aes, q_aes) = ({caes, qaes})")
-            if i == len(trange) - 1 and not (
-                    C_INTERVALS_WARN_FUNCTS[0]
-                (caes) <= c_lambd <= C_INTERVALS_WARN_FUNCTS[1](caes)
-                    and Q_INTERVALS_WARN_FUNCTS[0]
-                (qaes) <= q_lambd <= Q_INTERVALS_WARN_FUNCTS[1](qaes)):
-                print(f"WARNING: upper frontier for t (p = {p}, n0 = {n0})! ")
-                print(f"(c_lambda, q_lambda) = ({c_lambd, q_lambd})")
-                print(f"(c_aes, q_aes) = ({caes, qaes})")
+            if i == 0:
+                vals = check_frontier(
+                    True, caes, c_lambd, qaes, q_lambd,
+                    f"- MRA: p = {p}, n0 = {n0}, *t* = {t}! ", n, k, t)
+                isd_values_to_compute.extend(vals)
+            elif i == len(trange) - 1:
+                vals = check_frontier(
+                    False, caes, c_lambd, qaes, q_lambd,
+                    f"- MRA: p = {p}, n0 = {n0}, *t* = {t}! ", n, k, t)
+                isd_values_to_compute.extend(vals)
+            complexities['MRA'] = (caes, qaes)
 
             # arbitrary start range, considering that t=(2*v, 2*v, n0*v)
             vmin = t // n0
@@ -180,7 +219,7 @@ def param(
             if vmin % 2 == 0:
                 vmin += 1
             # simply because this is the highest v
-            vmax = tmax
+            vmax = tmax * 2
             if vmax % 2 == 0:
                 vmax += 1
 
@@ -206,21 +245,17 @@ def param(
                     c_lambd) and qaes <= Q_INTERVALS_FUNCTS[1](q_lambd)
                 if not secure_ok_high:
                     break  # security too high, do not keep trying greater vs
-                if j == 0 and not (C_INTERVALS_WARN_FUNCTS[0]
-                                (caes) <= c_lambd <= C_INTERVALS_WARN_FUNCTS[1]
-                                (caes) and Q_INTERVALS_WARN_FUNCTS[0](qaes) <=
-                                q_lambd <= Q_INTERVALS_WARN_FUNCTS[1](qaes)):
-                    print(f"WARNING: lower frontier for (p = {p}, n0 = {n0}, v {v})! ")
-                    print(f"(c_lambda, q_lambda) = ({c_lambd, q_lambd})")
-                    print(f"(c_aes, q_aes) = ({caes, qaes})")
-                if j == len(trange) - 1 and not (
-                        C_INTERVALS_WARN_FUNCTS[0]
-                    (caes) <= c_lambd <= C_INTERVALS_WARN_FUNCTS[1](caes)
-                        and Q_INTERVALS_WARN_FUNCTS[0]
-                    (qaes) <= q_lambd <= Q_INTERVALS_WARN_FUNCTS[1](qaes)):
-                    print(f"WARNING: upper frontier for v (p = {p}, n0 = {n0}, v {v})! ")
-                    print(f"(c_lambda, q_lambda) = ({c_lambd, q_lambd})")
-                    print(f"(c_aes, q_aes) = ({caes, qaes})")
+                if j == 0:
+                    vals = check_frontier(
+                        True, caes, c_lambd, qaes, q_lambd,
+                        f"- KRA1: p = {p}, n0 = {n0}, *v* = {t}! ", _n, _k, _t)
+                    isd_values_to_compute.extend(vals)
+                elif j == len(vrange) - 1:
+                    vals = check_frontier(
+                        False, caes, c_lambd, qaes, q_lambd,
+                        f"- KRA1: p = {p}, n0 = {n0}, *v* = {t})! ", _n, _k,
+                        _t)
+                    isd_values_to_compute.extend(vals)
                 complexities['KRA1'] = (caes, qaes)
                 # KRA3
                 _n = n0 * p
@@ -241,21 +276,16 @@ def param(
                     c_lambd) and qaes <= Q_INTERVALS_FUNCTS[1](q_lambd)
                 if not secure_ok_high:
                     break  # security too high, do not keep trying greater vs
-                if j == 0 and not (C_INTERVALS_WARN_FUNCTS[0]
-                                (caes) <= c_lambd <= C_INTERVALS_WARN_FUNCTS[1]
-                                (caes) and Q_INTERVALS_WARN_FUNCTS[0](qaes) <=
-                                q_lambd <= Q_INTERVALS_WARN_FUNCTS[1](qaes)):
-                    print(f"WARNING: lower frontier for (p = {p}, n0 = {n0}, v {v})! ")
-                    print(f"(c_lambda, q_lambda) = ({c_lambd, q_lambd})")
-                    print(f"(c_aes, q_aes) = ({caes, qaes})")
-                if j == len(trange) - 1 and not (
-                        C_INTERVALS_WARN_FUNCTS[0]
-                    (caes) <= c_lambd <= C_INTERVALS_WARN_FUNCTS[1](caes)
-                        and Q_INTERVALS_WARN_FUNCTS[0]
-                    (qaes) <= q_lambd <= Q_INTERVALS_WARN_FUNCTS[1](qaes)):
-                    print(f"WARNING: upper frontier for v (p = {p}, n0 = {n0}, v {v})! ")
-                    print(f"(c_lambda, q_lambda) = ({c_lambd, q_lambd})")
-                    print(f"(c_aes, q_aes) = ({caes, qaes})")
+                if j == 0:
+                    vals = check_frontier(
+                        True, caes, c_lambd, qaes, q_lambd,
+                        f"- KRA3: p = {p}, n0 = {n0}, v = {t}! ", _n, _k, _t)
+                    isd_values_to_compute.extend(vals)
+                elif j == len(vrange) - 1:
+                    vals = check_frontier(
+                        False, caes, c_lambd, qaes, q_lambd,
+                        f"- KRA3: p = {p}, n0 = {n0}, v = {t}! ", _n, _k, _t)
+                    isd_values_to_compute.extend(vals)
                 complexities['KRA3'] = (caes, qaes)
 
                 if n0 != 2:
@@ -278,30 +308,27 @@ def param(
                         c_lambd) and qaes <= Q_INTERVALS_FUNCTS[1](q_lambd)
                     if not secure_ok_high:
                         break  # security too high, do not keep trying greater vs
-                    if j == 0 and not (C_INTERVALS_WARN_FUNCTS[0]
-                                    (caes) <= c_lambd <= C_INTERVALS_WARN_FUNCTS[1]
-                                    (caes) and Q_INTERVALS_WARN_FUNCTS[0](qaes) <=
-                                    q_lambd <= Q_INTERVALS_WARN_FUNCTS[1](qaes)):
-                        print(f"WARNING: lower frontier for (p = {p}, n0 = {n0}, v {v})! ")
-                        print(f"(c_lambda, q_lambda) = ({c_lambd, q_lambd})")
-                        print(f"(c_aes, q_aes) = ({caes, qaes})")
-                    if j == len(trange) - 1 and not (
-                            C_INTERVALS_WARN_FUNCTS[0]
-                            (caes) <= c_lambd <= C_INTERVALS_WARN_FUNCTS[1](caes)
-                            and Q_INTERVALS_WARN_FUNCTS[0]
-                            (qaes) <= q_lambd <= Q_INTERVALS_WARN_FUNCTS[1](qaes)):
-                        print(f"WARNING: upper frontier for v (p = {p}, n0 = {n0}, v {v})! ")
-                        print(f"(c_lambda, q_lambda) = ({c_lambd, q_lambd})")
-                        print(f"(c_aes, q_aes) = ({caes, qaes})")
+                    if j == 0:
+                        vals = check_frontier(
+                            True, caes, c_lambd, qaes, q_lambd,
+                            f"- KRA2: p = {p}, n0 = {n0}, v = {t}! ", _n, _k,
+                            _t)
+                        isd_values_to_compute.extend(vals)
+                    elif j == len(vrange) - 1:
+                        vals = check_frontier(
+                            False, caes, c_lambd, qaes, q_lambd,
+                            f"- KRA2: p = {p}, n0 = {n0}, v = {t}! ", _n, _k,
+                            _t)
+                        isd_values_to_compute.extend(vals)
                     complexities['KRA2'] = (c_compl - red, 2 * (q_compl - red))
                 leda_values.append((p, n0, v, t, complexities))
-                isd_values.add(Value(n, n - k, t))
+                isd_values.append(Value(n, n - k, t))
 
             # end v loop
         # end t loop
     # end p, n0 loop
 
-    return leda_values, isd_values
+    return leda_values, set(isd_values), set(isd_values_to_compute)
 
 
 def get_hardcoded_filenames():
@@ -346,6 +373,7 @@ def get_hardcoded_filenames():
 
 
 def main():
+    init_logger(LOGGER, 'logs/isd_values_restrictions.log')
     # all nested keys are sorted
     filenames = os.listdir(OUT_FILES_CLEDA_TYPE_DIR.format(out_type='json'))
     # filenames = get_hardcoded_filenames()
@@ -355,7 +383,7 @@ def main():
     print(f"Values available {len(filenames)}")
     for level, c_lambda, q_lambda in zip((1, 3, 5), AES_LAMBDAS, QAES_LAMBDAS):
         print(f" Level {level}: (AES, QAES) = ({c_lambda}, {q_lambda})")
-        leda_values, isd_values = param(
+        leda_values, isd_values, isd_values_to_compute = param(
             c_lambda,
             q_lambda,  # filenames,
             filenames_idx_by_p_sorted)
@@ -369,6 +397,11 @@ def main():
 
     with open(OUT_FILE_ISD_VALS, 'w') as fp:
         json.dump([asdict(x) for x in sorted(isd_vals)], fp, indent=2)
+
+    with open(OUT_FILE_ISD_VALS_TO_COMPUTE, 'w') as fp:
+        json.dump([asdict(x) for x in sorted(isd_values_to_compute)],
+                  fp,
+                  indent=2)
 
 
 if __name__ == '__main__':
