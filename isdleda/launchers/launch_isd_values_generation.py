@@ -1,4 +1,6 @@
-"""Generate the range of useful values for LEDA
+"""Generate a range of useful values for LEDA, based on the approximation of
+Torres, Sendrier - PQCrypto 2016
+
 """
 import csv
 import itertools
@@ -7,24 +9,25 @@ from dataclasses import asdict
 from typing import Dict
 
 import numpy as np
-from isdleda.utils.common import Value
+from isdleda.utils.common import ISDValue
 from isdleda.utils.export.export import save_to_json
 
 # from isdleda.utils.paths import ISD_VALUES_FILE_JSON, ISD_VALUES_FILE_PKL
 
 
-def add_to_dict(values: Dict[str, Value], n, r, t, prime, n0, v, lambd, msg):
+# def add_to_dict(values: Dict[str, Value], n, r, t, prime, n0, v, lambd, msg):
+def add_to_dict(values: Dict[str, ISDValue], n, r, t, msg):
     _key = f"{n}_{r}_{t}"
     if _key not in values:
-        value = Value(
+        value = ISDValue(
             n=n,
             r=r,
             # This is the t used to assess the ISD attack
             t=t,
-            prime=prime,
-            n0=n0,
-            v=v,
-            lambd=lambd,
+            # prime=prime,
+            # n0=n0,
+            # v=v,
+            # lambd=lambd,
             msgs=[msg],
         )
         values[_key] = value
@@ -45,7 +48,7 @@ def main():
     n0_values = range(2, 6)
 
     lambda_values = (128, 192, 256)
-    values: Dict[str, Value] = dict()
+    values: Dict[str, ISDValue] = dict()
 
     for n0, lam in itertools.product(n0_values, lambda_values):
         # Approximate ISD hardness (Sendrier method). Given the weight $w$ of
@@ -112,7 +115,7 @@ def main():
                 _n = prime * n0
                 _r = prime
                 _t = 2 * v
-                add_to_dict(values, _n, _r, _t, prime, n0, v, lam, msg)
+                add_to_dict(values, _n, _r, _t, msg)
 
                 # key recovery 2 ISD(2p, p, 2v)
                 # Each n0 !=2 can be reduced to n0=2
@@ -121,14 +124,14 @@ def main():
                     _n = prime * 2
                     _r = prime
                     _t = 2 * v
-                    add_to_dict(values, _n, _r, _t, prime, n0, v, lam, msg)
+                    add_to_dict(values, _n, _r, _t, msg)
 
                 # key recovery 3 ISD(n0*p, (n0-1)*p, n0*v
                 msg = "KR3"
                 _n = prime * n0
                 _r = prime
                 _t = n0 * v
-                add_to_dict(values, _n, _r, _t, prime, n0, v, lam, msg)
+                add_to_dict(values, _n, _r, _t, msg)
 
         # Message recovery, i.e., Syndrome Decoding Problem (SDP)
         for t in range(int(t1 * .8), int(t1 * 1.2)):
@@ -141,13 +144,14 @@ def main():
                 _n = prime * n0
                 _r = prime
                 _t = t
-                add_to_dict(values, _n, _r, _t, prime, n0, v, lam, msg)
+                add_to_dict(values, _n, _r, _t, msg)
 
     print(len(values))
     values_set = set(values.values())
     # print(f"Pickling to {ISD_VALUES_FILE_PKL}")
     # save_to_pickle(ISD_VALUES_FILE_PKL, values_set)
-    filename = os.path.join("out", "values", "from_generation", "isd_values.json")
+    filename = os.path.join("out", "values", "from_generation",
+                            "isd_values.json")
     print(f"JSONing to {filename}")
     save_to_json(filename, [asdict(x) for x in sorted(values_set)])
 

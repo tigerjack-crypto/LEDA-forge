@@ -12,11 +12,11 @@ from typing import Dict, Optional, Sequence
 
 from isdleda.launchers.launcher_utils import (argparse_check_positive,
                                               get_no_of_files, init_logger)
-from isdleda.utils.common import Value
-from isdleda.utils.export.export import (load_from_pickle, save_to_json,
+from isdleda.utils.common import ISDValue, dict_to_isd_value
+from isdleda.utils.export.export import (load_from_json, save_to_json, load_from_pickle,
                                          save_to_pickle, save_to_txt)
-from isdleda.utils.paths import (ISD_VALUES_FILE_PKL, OUT_FILES_QLB_DIR,
-                                 OUT_FILES_QLB_FMT, OUT_FILES_QLB_SYMBOLIC)
+from isdleda.utils.paths import (OUT_FILES_QLB_DIR, OUT_FILES_QLB_FMT,
+                                 OUT_FILES_QLB_SYMBOLIC, ISD_VALUES_FILE_JSON)
 # ISD_scripts
 from measures.common import CodeExtended
 from measures.leebrickell_quantum import LeeBrickellQuantum, ValueDicts
@@ -209,7 +209,10 @@ def main(raw_args: Optional[list[str]] = None):
         return
 
     # ISD values always stored as pkl
-    isd_values: Sequence[Value] = load_from_pickle(ISD_VALUES_FILE_PKL)
+    isd_values: Sequence[ISDValue] = [
+        dict_to_isd_value(x) for x in load_from_json(ISD_VALUES_FILE_JSON)
+    ]
+
     p_range = range(1, 5)
 
     tot = len(isd_values) * len(p_range)

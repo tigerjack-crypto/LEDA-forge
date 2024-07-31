@@ -11,27 +11,41 @@ class Attacks(StrEnum):
 
 
 @dataclass(eq=True, frozen=True, order=True)
-class Value:
+class ISDValue:
     n: int
     r: int
     t: int
     # k: int = field(init=False, compare=False)
-    prime: Optional[int] = field(default=None, compare=False)
-    n0: Optional[int] = field(default=None, compare=False)
-    v: Optional[int] = field(default=None, compare=False)
-    lambd: Optional[int] = field(default=None, compare=False)
+    # prime: Optional[int] = field(default=None, compare=False)
+    # n0: Optional[int] = field(default=None, compare=False)
+    # v: Optional[int] = field(default=None, compare=False)
+    # lambd: Optional[int] = field(default=None, compare=False)
+    msgs: List[str] = field(default_factory=list, compare=False)
+
+@dataclass(eq=True, frozen=True, order=True)
+class LEDAValue:
+    p: int
+    n0: int
+    t: int
+    v: int
+    tau: Optional[int] = field(default=None, compare=False)
     msgs: List[str] = field(default_factory=list, compare=False)
 
 # especially useful for json
-def dict_to_value(dct):
+def dict_to_isd_value(dct):
     if 'n' in dct and 'r' in dct and 't' in dct:
-        return Value(**dct)
+        return ISDValue(**dct)
+    return dct
+
+def dict_to_leda_value(dct):
+    if 'p' in dct and 'n0' in dct and 't' in dct and 'v' in dct:
+        return LEDAValue(**dct)
     return dct
 
 
 @dataclass(order=True)
 class ISDVariant:
-    value: Value
+    value: ISDValue
     attack: Attacks = field(compare=False)
     isd_variant: str
     isd_variant_options: Dict[str, Any]

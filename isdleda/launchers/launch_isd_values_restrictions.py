@@ -1,3 +1,11 @@
+"""Given all the already computed (classical, quantum) values (possibly
+produced by the launch_isd_values_generation tool), this tool tries to produce:
+- a list of plausible (p, n0, v) LEDA values to explore - the corresponding (n,
+k, t) ISD values useful for a generic ISD exploration - the missing (n, k, t)
+ISD values that have to be computed; if the dataset misses some values that
+this tool deems worth exploring, it produces all those values
+
+"""
 import functools
 import itertools
 import json

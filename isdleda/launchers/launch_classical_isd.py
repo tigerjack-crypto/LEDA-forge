@@ -18,7 +18,7 @@ from cryptographic_estimators.SDEstimator import (BJMM, BallCollision, BJMMdw,
 from isdleda.launchers.launcher_utils import (MemAccess,
                                               argparse_check_positive,
                                               get_no_of_files, init_logger)
-from isdleda.utils.common import Value, dict_to_value
+from isdleda.utils.common import ISDValue, dict_to_isd_value
 from isdleda.utils.export.export import (load_from_json, save_to_json,
                                          save_to_pickle)
 from isdleda.utils.paths import (ISD_VALUES_FILE_JSON, OUT_FILES_CEB_FMT,
@@ -50,7 +50,7 @@ def parse_arguments():
     return parser
 
 
-def _process_value(value: Value, out_type: str, file_ext: str):
+def _process_value(value: ISDValue, out_type: str, file_ext: str):
     to_skip = True
     for mem_access in (
             MemAccess.MEM_CONST,
@@ -73,7 +73,7 @@ def _process_value(value: Value, out_type: str, file_ext: str):
     return not to_skip
 
 
-def _group_by_n_k(values: Iterable[Value]):
+def _group_by_n_k(values: Iterable[ISDValue]):
     values_dict = collections.defaultdict(list)
     for value in values:
         key = hash(str(value.n) + '|' + str(value.r))
@@ -85,7 +85,7 @@ def _group_by_n_k(values: Iterable[Value]):
 def isd_compute(arg, out_type: str, file_ext: str):
     # should be a list of values having same n and r
     # excluded_algorithms_by_default = [BJMMd2, BJMMd3, MayOzerovD2, MayOzerovD3]
-    values_grouped: Sequence[Value] = arg
+    values_grouped: Sequence[ISDValue] = arg
     LOGGER.info(f"Computing {values_grouped}")
     skip_algos = [
         BJMM, BallCollision, BJMMdw, BJMMpdw, BJMMplus, BothMay, MayOzerov
@@ -163,8 +163,8 @@ def main(raw_args: Optional[list[str]] = None):
     t0 = datetime.now()
     LOGGER.info(f"Starting data filtering at {t0}")
 
-    isd_values: Sequence[Value] = [
-        dict_to_value(x) for x in load_from_json(ISD_VALUES_FILE_JSON)
+    isd_values: Sequence[ISDValue] = [
+        dict_to_isd_value(x) for x in load_from_json(ISD_VALUES_FILE_JSON)
     ]
 
     tot = len(isd_values) * len(MemAccess)
