@@ -5,6 +5,14 @@ from enum import IntEnum
 from typing import Optional
 
 
+# Official NIST values
+AES_LAMBDAS = (143, 207, 272)
+# Best values obtained for Jan+22 Ph.D. Thesis, table 6.5 (Jan+22).
+QAES_LAMBDAS = (154, 219, 283)
+# Values from Jaques, used by NIST in additional signature calls
+# QAES_LAMBDAS = (157, 221, 285)
+
+
 class MemAccess(IntEnum):
     MEM_CONST = 0
     MEM_LOG = 1

@@ -15,22 +15,16 @@ import os
 from collections import defaultdict
 from dataclasses import asdict
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
-from isdleda.launchers.launcher_utils import init_logger
-from isdleda.utils.common import Value
+from isdleda.launchers.launcher_utils import init_logger, AES_LAMBDAS, QAES_LAMBDAS
+from isdleda.utils.common import ISDValue, LEDAValue
+from isdleda.utils.export.export import save_to_json
 from isdleda.utils.paths import OUT_FILES_CLEDA_FMT, OUT_FILES_CLEDA_TYPE_DIR
 from numpy import log2
 from sortedcontainers import SortedDict
 
 LOGGER = logging.getLogger(__name__)
-
-# Official NIST values
-AES_LAMBDAS = (143, 207, 272)
-# Best values obtained for Jan+22 Ph.D. Thesis, table 6.5 (Jan+22).
-QAES_LAMBDAS = (154, 219, 283)
-# Values from Jaques, used by NIST in additional signature calls
-# QAES_LAMBDAS = (157, 221, 285)
 
 OUT_FILE_LEDA_VALS = 'out/values/from_restrictions/leda_values.json'
 OUT_FILE_ISD_VALS = 'out/values/from_restrictions/isd_values.json'
@@ -55,10 +49,10 @@ Q_INTERVALS_FUNCTS = (functools.partial(operator.add, -20),
 # These intervals are interpred as: If first value explored and CAES >= lambda
 # + val[0] -> WARN. If last value explored and CAES <= lambda + val[1] -> WARN
 
-C_INTERVALS_WARN_FUNCTS = (functools.partial(operator.add, -20),
+C_INTERVALS_WARN_FUNCTS = (functools.partial(operator.add, -30),
+                           functools.partial(operator.add, +30))
+Q_INTERVALS_WARN_FUNCTS = (functools.partial(operator.add, -20),
                            functools.partial(operator.add, +20))
-Q_INTERVALS_WARN_FUNCTS = (functools.partial(operator.add, -15),
-                           functools.partial(operator.add, +15))
 
 
 def check_frontier(low: bool, caes, c_lambda, qaes, q_lambda, msg: str, n, k,
@@ -67,26 +61,31 @@ def check_frontier(low: bool, caes, c_lambda, qaes, q_lambda, msg: str, n, k,
     isd_values = []
     # exploring_range
     # low (i.e., first value explored) and (caes> c_lambda - 20 or qaes> q_lambda - 20)
-    if low and (caes > C_INTERVALS_WARN_FUNCTS[0](c_lambda)
-                or qaes > Q_INTERVALS_WARN_FUNCTS[0](q_lambda)):
+    caes_diff = caes - C_INTERVALS_WARN_FUNCTS[0](c_lambda)
+    qaes_diff = qaes - Q_INTERVALS_WARN_FUNCTS[0](q_lambda)
+    if low and (caes_diff > 0 or qaes_diff > 0):
         LOGGER.warning(f"WARNING: lower frontier! ")
         LOGGER.warning(msg)
         LOGGER.warning(f"(c_lambda, q_lambda) = ({c_lambda, q_lambda})")
         LOGGER.warning(f"(c_aes, q_aes) = ({caes, qaes})")
-        LOGGER.warning(f"{n}_{k}_{t}")
-        for i in range(-15, 15):
-            val = Value(n, n - k, t + i)
+        LOGGER.warning(f"{n:06}_{k:06}_{t:03}")
+        # decrease the t of a value inversely proportional to the max difference
+        for i in range(int(-20 * 1 / max(caes_diff, qaes_diff, 1)), -1, 3):
+            val = ISDValue(n, n - k, t + i)
             isd_values.append(val)
     # high (i.e., last value explored) and (caes< c_lambda + 20 or qaes< q_lambda + 20)
-    if not low and (caes < C_INTERVALS_WARN_FUNCTS[1](c_lambda)
-                    or qaes < Q_INTERVALS_WARN_FUNCTS[1](q_lambda)):
+
+    caes_diff = caes - C_INTERVALS_WARN_FUNCTS[1](c_lambda)
+    qaes_diff = qaes - Q_INTERVALS_WARN_FUNCTS[1](q_lambda)
+    if not low and (caes_diff < 0 or qaes_diff < 0):
         LOGGER.warning("WARNING: upper frontier! ")
         LOGGER.warning(msg)
         LOGGER.warning(f"(c_lambda, q_lambda) = ({c_lambda, q_lambda})")
         LOGGER.warning(f"(c_aes, q_aes) = ({caes, qaes})")
-        LOGGER.warning(f"{n}_{k}_{t}")
-        for i in range(-15, 15):
-            val = Value(n, n - k, t + i)
+        LOGGER.warning(f"{n:06}_{k:06}_{t:03}")
+        # increase the t of a value inversely proportional to the max difference
+        for i in range(1, int(20 * 1/int(max(caes_diff, qaes_diff, 1))), 3):
+            val = ISDValue(n, n - k, t + i)
             isd_values.append(val)
     return isd_values
 
@@ -97,9 +96,11 @@ def get_complexity(n, k, t) -> Optional[Tuple[float, float]]:
     # and varying the t shouldn't affect the values too much.
     #
     # To have a reference, taking the lowest n for leda, and using a (-4, +4)
-    # on t, results in a (-4, +4) on the (log2) complexity. Taking the highest
-    # results in (-8, +8). To compensate, we can approximately add the diff (t
-    # - _t) to the result. For the quantum side, these values are halved.
+    # on t, results in a (-4, +4) on the (log2) classical complexity. On the
+    # other hand, taking the highest n, it results in (-8, +8).
+    #
+    # To have a quick compensation, I approximately add the diff (t - _t) to
+    # the result. For the quantum side, these values are halved.
 
     for _t in (t, t + 1, t - 1, t + 2, t - 2, t - 3, t + 3):
         filename = OUT_FILES_CLEDA_FMT.format(out_type='json',
@@ -148,26 +149,35 @@ def get_filenames(
 
 
 def param(
-    c_lambd: int,
-    q_lambd: int,
+    c_lambda: int,
+    q_lambda: int,
     filenames_idx_by_p: Dict[int, Dict[int, Dict[int, str]]],
-):
-    # These are the leda values. Each entry is a tuple (p, n0, v, t, (C_complexity, Q_complexity))
-    leda_values = []
-    # These are the right ISD values to explore in the intervals around the
-    # lambda values. Each entry is a Value with (n, r, t)
-    isd_values = []
+) -> Tuple[Set[LEDAValue], Set[ISDValue], Set[ISDValue]]:
+    # While the filenames_idx_by_p are dictionaries, the function expects
+    # SortedDict instances. The package does not have any type information
+    # available.
 
-    # These are the ISD values for which additional exploration is needed, since probably
-    # there have been values too close to the frontier
-    isd_values_to_compute = []
+    # LEDA values having complexities in the interval around the given
+    # c_lambdaa/q_lambdaa. Each entry is a tuple (p, n0, v, t), with an
+    # additional message of (C_complexity, Q_complexity)
+    leda_values: List[LEDAValue] = []
 
-    ps_sorted = sorted(filenames_idx_by_p)
-    pmin, pmax = ps_sorted[0], ps_sorted[
-        -1]  # min value of r given the filenames
+    # ISD values in the intervals around the lambda values. Each entry is an
+    # ISDValue with (n, r, t)
+    isd_values: List[ISDValue] = []
+
+    # ISD values missing from the dataset. These values are generated because
+    # the explorations of the v's and t's parameters was not exhaustive, since
+    # some values were missing.
+    isd_values_to_compute: List[ISDValue] = []
+
+    # These keys are sorted
+    ps = [*filenames_idx_by_p]
+    pmin, pmax = ps[0], ps[-1]  # min value of r given the filenames
     # to_generate: Set[Value]
     for p, n0 in itertools.product(range(int(pmin), int(pmax) + 1), (2, 6)):
         complexities: Dict[str, Tuple[float, float]] = {}
+        complexities["Target"] = (c_lambda, q_lambda)
         n = p * n0
         r = p
         k = n - r
@@ -175,59 +185,52 @@ def param(
             filenames_idx_by_p[p][n0]
         except KeyError:
             continue
-        # if n0 not in filenames_idx_by_p[p] or len(filenames_idx_by_p[p][n0]) ==0:
-        #     # no value for this p and n0
-        #     continue  # next (p, n0)
-        # for the given value, find the minimum/maximum t
         ts_sorted = sorted(filenames_idx_by_p[p][n0])
         tmin, tmax = ts_sorted[0], ts_sorted[-1]
+        # Sweep all the t values in the range, even if not present in the
+        # dataset. Note that even if the t is not present, the complexity
+        # values are still approximated (if possible) using the closest t
+        # value.
         trange = range(tmin, tmax + 1)
         for i, t in enumerate(trange):
-            # check only the values reaching the minimum threshold
             res = get_complexity(n, k, t)
             if res is None:
-                # No file with that t
                 continue  # next t
+            # MRA
             c_compl, q_compl = res
+            # DOOM
             red = log2(p) / 2
             caes = c_compl - red
             # For the quantum part, the threshold values are given by twice the
             # depth of the circuit (check Eq. 6.6 of my phd.thesis)
             qaes = 2 * (q_compl - red)
-            caes_diff_low = caes - C_INTERVALS_FUNCTS[0](c_lambd)
-            qaes_diff_low = qaes - Q_INTERVALS_FUNCTS[0](q_lambd)
-            caes_diff_high = caes - C_INTERVALS_FUNCTS[1](c_lambd)
-            qaes_diff_high = qaes - Q_INTERVALS_FUNCTS[1](q_lambd)
+            caes_diff_low = caes - C_INTERVALS_FUNCTS[0](c_lambda)
+            qaes_diff_low = qaes - Q_INTERVALS_FUNCTS[0](q_lambda)
+            caes_diff_high = caes - C_INTERVALS_FUNCTS[1](c_lambda)
+            qaes_diff_high = qaes - Q_INTERVALS_FUNCTS[1](q_lambda)
             if caes_diff_low <= 0 or qaes_diff_low <= 0:
                 continue  # next t
             if caes_diff_high >= 0 or qaes_diff_high >= 0:
                 break  # do not keep increasing the ts, it's useless, we'll have higher values
-            # if at the first iteration I get a lower value which is
-            #
-            # - too close to the lower bound (f.e., clambda = 100, caes = 98 -> caes_diff_low = 2) OR
-            #
-            # - too far from the lower bound (f.e., clambda = 100, caes = +120)
-            # too far away from it
             if i == 0:
                 vals = check_frontier(
-                    True, caes, c_lambd, qaes, q_lambd,
+                    True, caes, c_lambda, qaes, q_lambda,
                     f"- MRA: p = {p}, n0 = {n0}, *t* = {t}! ", n, k, t)
                 isd_values_to_compute.extend(vals)
             elif i == len(trange) - 1:
                 vals = check_frontier(
-                    False, caes, c_lambd, qaes, q_lambd,
+                    False, caes, c_lambda, qaes, q_lambda,
                     f"- MRA: p = {p}, n0 = {n0}, *t* = {t}! ", n, k, t)
                 isd_values_to_compute.extend(vals)
             complexities['MRA'] = (caes, qaes)
 
             # arbitrary start range, considering that t=(2*v, 2*v, n0*v)
-            vmin = t // n0
-            vmin = tmin // 2
+            vmin = t // (n0 + 2)
             # vmin should be odd
             if vmin % 2 == 0:
                 vmin += 1
-            # simply because this is the highest v
-            vmax = tmax * 2
+            # arbitrary end range
+            vmax = tmax * 3
             if vmax % 2 == 0:
                 vmax += 1
 
@@ -237,7 +240,7 @@ def param(
                 _n = n0 * p
                 _k = (n0 - 1) * p
                 _t = 2 * v
-                # ncr(n0;2)
+                # explicit ncr(n0;2)
                 red = log2(n0) + log2(n0 - 1) - 1
                 res = get_complexity(_n, _k, _t)
                 if res is None:
@@ -246,21 +249,21 @@ def param(
                 caes = c_compl - red
                 qaes = 2 * (q_compl - red)
                 secure_ok_low = caes >= C_INTERVALS_FUNCTS[0](
-                    c_lambd) and qaes >= Q_INTERVALS_FUNCTS[0](q_lambd)
+                    c_lambda) and qaes >= Q_INTERVALS_FUNCTS[0](q_lambda)
                 if not secure_ok_low:
                     continue  # not reaching min security, next v
                 secure_ok_high = caes <= C_INTERVALS_FUNCTS[1](
-                    c_lambd) and qaes <= Q_INTERVALS_FUNCTS[1](q_lambd)
+                    c_lambda) and qaes <= Q_INTERVALS_FUNCTS[1](q_lambda)
                 if not secure_ok_high:
                     break  # security too high, do not keep trying greater vs
                 if j == 0:
                     vals = check_frontier(
-                        True, caes, c_lambd, qaes, q_lambd,
+                        True, caes, c_lambda, qaes, q_lambda,
                         f"- KRA1: p = {p}, n0 = {n0}, *v* = {t}! ", _n, _k, _t)
                     isd_values_to_compute.extend(vals)
                 elif j == len(vrange) - 1:
                     vals = check_frontier(
-                        False, caes, c_lambd, qaes, q_lambd,
+                        False, caes, c_lambda, qaes, q_lambda,
                         f"- KRA1: p = {p}, n0 = {n0}, *v* = {t})! ", _n, _k,
                         _t)
                     isd_values_to_compute.extend(vals)
@@ -277,21 +280,21 @@ def param(
                 caes = c_compl - red
                 qaes = 2 * (q_compl - red)
                 secure_ok_low = caes >= C_INTERVALS_FUNCTS[0](
-                    c_lambd) and qaes >= Q_INTERVALS_FUNCTS[0](q_lambd)
+                    c_lambda) and qaes >= Q_INTERVALS_FUNCTS[0](q_lambda)
                 if not secure_ok_low:
                     continue  # not reaching min security, next v
                 secure_ok_high = caes <= C_INTERVALS_FUNCTS[1](
-                    c_lambd) and qaes <= Q_INTERVALS_FUNCTS[1](q_lambd)
+                    c_lambda) and qaes <= Q_INTERVALS_FUNCTS[1](q_lambda)
                 if not secure_ok_high:
                     break  # security too high, do not keep trying greater vs
                 if j == 0:
                     vals = check_frontier(
-                        True, caes, c_lambd, qaes, q_lambd,
+                        True, caes, c_lambda, qaes, q_lambda,
                         f"- KRA3: p = {p}, n0 = {n0}, v = {t}! ", _n, _k, _t)
                     isd_values_to_compute.extend(vals)
                 elif j == len(vrange) - 1:
                     vals = check_frontier(
-                        False, caes, c_lambd, qaes, q_lambd,
+                        False, caes, c_lambda, qaes, q_lambda,
                         f"- KRA3: p = {p}, n0 = {n0}, v = {t}! ", _n, _k, _t)
                     isd_values_to_compute.extend(vals)
                 complexities['KRA3'] = (caes, qaes)
@@ -309,37 +312,43 @@ def param(
                     caes = c_compl - red
                     qaes = 2 * (q_compl - red)
                     secure_ok_low = caes >= C_INTERVALS_FUNCTS[0](
-                        c_lambd) and qaes >= Q_INTERVALS_FUNCTS[0](q_lambd)
+                        c_lambda) and qaes >= Q_INTERVALS_FUNCTS[0](q_lambda)
                     if not secure_ok_low:
                         continue  # not reaching min security, next v
                     secure_ok_high = caes <= C_INTERVALS_FUNCTS[1](
-                        c_lambd) and qaes <= Q_INTERVALS_FUNCTS[1](q_lambd)
+                        c_lambda) and qaes <= Q_INTERVALS_FUNCTS[1](q_lambda)
                     if not secure_ok_high:
-                        break  # security too high, do not keep trying greater vs
+                        break  # security too high, do not keep trying greater v's
                     if j == 0:
                         vals = check_frontier(
-                            True, caes, c_lambd, qaes, q_lambd,
+                            True, caes, c_lambda, qaes, q_lambda,
                             f"- KRA2: p = {p}, n0 = {n0}, v = {t}! ", _n, _k,
                             _t)
                         isd_values_to_compute.extend(vals)
                     elif j == len(vrange) - 1:
                         vals = check_frontier(
-                            False, caes, c_lambd, qaes, q_lambd,
+                            False, caes, c_lambda, qaes, q_lambda,
                             f"- KRA2: p = {p}, n0 = {n0}, v = {t}! ", _n, _k,
                             _t)
                         isd_values_to_compute.extend(vals)
                     complexities['KRA2'] = (c_compl - red, 2 * (q_compl - red))
-                leda_values.append((p, n0, v, t, complexities))
-                isd_values.append(Value(n, n - k, t))
+                leda_values.append(
+                    LEDAValue(p,
+                              n0,
+                              v,
+                              t,
+                              msgs=[f"Complexities: {complexities}"]))
+                isd_values.append(ISDValue(n, n - k, t))
 
             # end v loop
         # end t loop
     # end p, n0 loop
 
-    return leda_values, set(isd_values), set(isd_values_to_compute)
+    return set(leda_values), set(isd_values), set(isd_values_to_compute)
 
 
 def get_hardcoded_filenames():
+    """just for quick testing"""
     return [
         # "016342_008171_126.json",
         # "017338_008669_129.json",
@@ -386,30 +395,38 @@ def main():
     filenames = os.listdir(OUT_FILES_CLEDA_TYPE_DIR.format(out_type='json'))
     # filenames = get_hardcoded_filenames()
     filenames_idx_by_p_sorted = get_filenames(filenames)
+    # These are values worth exploring, and should be categorized per security level
     leda_vals = {}
-    isd_vals = set()
+    # These are values that we deem worthful exploring for ISD attack
+    isd_vals: Set[ISDValue] = set()
+    # These are values that we deem worthful exploring for ISD attack, but for
+    # which no computation still exists
+    isd_vals_to_compute: Set[ISDValue] = set()
+
     print(f"Values available {len(filenames)}")
+    print("*" * 80)
     for level, c_lambda, q_lambda in zip((1, 3, 5), AES_LAMBDAS, QAES_LAMBDAS):
-        print(f" Level {level}: (AES, QAES) = ({c_lambda}, {q_lambda})")
+        print(f"Level {level}: (AES, QAES) = ({c_lambda}, {q_lambda})")
         leda_values, isd_values, isd_values_to_compute = param(
             c_lambda,
             q_lambda,  # filenames,
             filenames_idx_by_p_sorted)
         print(f"LEDA values obtained: {len(leda_values)}")
         print(f"ISD values obtained {len(isd_values)}")
+        print(f"ISD values to compute obtained {len(isd_values_to_compute)}")
         print("*" * 80)
-        leda_vals[level] = leda_values
+        leda_vals[level] = [asdict(x) for x in sorted(leda_values)]
         isd_vals.update(isd_values)
-    with open(OUT_FILE_LEDA_VALS, 'w') as fp:
-        json.dump(leda_vals, fp, indent=2)
+        isd_vals_to_compute.update(isd_values_to_compute)
 
-    with open(OUT_FILE_ISD_VALS, 'w') as fp:
-        json.dump([asdict(x) for x in sorted(isd_vals)], fp, indent=2)
+    print(f"LEDA values TOTAL {len(leda_vals)}")
+    print(f"ISD values TOTAL {len(isd_vals)}")
+    print(f"ISD values to compute TOTAL {len(isd_vals_to_compute)}")
 
-    with open(OUT_FILE_ISD_VALS_TO_COMPUTE, 'w') as fp:
-        json.dump([asdict(x) for x in sorted(isd_values_to_compute)],
-                  fp,
-                  indent=2)
+    save_to_json(OUT_FILE_LEDA_VALS, leda_vals)
+    save_to_json(OUT_FILE_ISD_VALS, [asdict(x) for x in sorted(isd_vals)])
+    save_to_json(OUT_FILE_ISD_VALS_TO_COMPUTE,
+                 [asdict(x) for x in sorted(isd_vals_to_compute)])
 
 
 if __name__ == '__main__':
