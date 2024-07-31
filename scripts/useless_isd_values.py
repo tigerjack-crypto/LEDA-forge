@@ -1,7 +1,7 @@
 import json
 import os
 from isdleda.utils.export.export import save_to_json
-from isdleda.utils.paths import ISD_VALUES_FILE_JSON
+# from isdleda.utils.paths import ISD_VALUES_FILE_JSON
 from dataclasses import asdict
 
 # Official NIST values
@@ -42,14 +42,15 @@ def main():
 
     # print(f"Pickling to {ISD_VALUES_FILE_PKL}")
     # save_to_pickle(ISD_VALUES_FILE_PKL, new_isd_vals)
+    filename = os.path.join("out", "values", "from_useless", "isd_values.json")
     print(
-        f"JSONing to {ISD_VALUES_FILE_JSON.replace('.json', '_cleaned.json')}")
-    save_to_json(ISD_VALUES_FILE_JSON,
+        f"JSONing to {filename}")
+    save_to_json(filename,
                  [asdict(x) for x in sorted(new_isd_vals)])
 
-    ISD_USELESS_VALUES = 'out/isd_values_useless.json'
-    print(f"JSONing useless to {ISD_USELESS_VALUES}")
-    save_to_json(ISD_USELESS_VALUES, [asdict(x) for x in sorted(new_isd_vals)])
+    filename = os.path.join("out", "values", "from_useless", "isd_values_useless.json")
+    print(f"JSONing useless to {filename}")
+    save_to_json(filename, [asdict(x) for x in sorted(useless)])
 
 
 if __name__ == '__main__':

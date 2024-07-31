@@ -2,13 +2,15 @@
 """
 import csv
 import itertools
+import os
 from dataclasses import asdict
 from typing import Dict
 
 import numpy as np
 from isdleda.utils.common import Value
-from isdleda.utils.export.export import save_to_pickle, save_to_json
-from isdleda.utils.paths import ISD_VALUES_FILE_JSON, ISD_VALUES_FILE_PKL
+from isdleda.utils.export.export import save_to_json
+
+# from isdleda.utils.paths import ISD_VALUES_FILE_JSON, ISD_VALUES_FILE_PKL
 
 
 def add_to_dict(values: Dict[str, Value], n, r, t, prime, n0, v, lambd, msg):
@@ -143,10 +145,11 @@ def main():
 
     print(len(values))
     values_set = set(values.values())
-    print(f"Pickling to {ISD_VALUES_FILE_PKL}")
-    save_to_pickle(ISD_VALUES_FILE_PKL, values_set)
-    print(f"JSONing to {ISD_VALUES_FILE_JSON}")
-    save_to_json(ISD_VALUES_FILE_JSON, [asdict(x) for x in sorted(values_set)])
+    # print(f"Pickling to {ISD_VALUES_FILE_PKL}")
+    # save_to_pickle(ISD_VALUES_FILE_PKL, values_set)
+    filename = os.path.join("out", "values", "from_generation", "isd_values.json")
+    print(f"JSONing to {filename}")
+    save_to_json(filename, [asdict(x) for x in sorted(values_set)])
 
 
 if __name__ == '__main__':
