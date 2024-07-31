@@ -234,7 +234,7 @@ def param(
             if vmax % 2 == 0:
                 vmax += 1
 
-            vrange = range(vmin, vmax, 2)
+            vrange = range(vmin, vmax + 1, 2)
             for j, v in enumerate(vrange):
                 # KRA1
                 _n = n0 * p
@@ -333,10 +333,10 @@ def param(
                         isd_values_to_compute.extend(vals)
                     complexities['KRA2'] = (c_compl - red, 2 * (q_compl - red))
                 leda_values.append(
-                    LEDAValue(p,
-                              n0,
-                              v,
-                              t,
+                    LEDAValue(p=p,
+                              n0=n0,
+                              t=t,
+                              v=v,
                               msgs=[f"Complexities: {complexities}"]))
                 isd_values.append(ISDValue(n, n - k, t))
 
