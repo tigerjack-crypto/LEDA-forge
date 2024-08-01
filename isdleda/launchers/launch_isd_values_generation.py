@@ -55,40 +55,34 @@ def main():
         # the codeword/error to be found and the code rate k/n=R, an ISD costs
         # approx 2^cw, where the constant c depends on the rate
         #
-        # c = log_2(1/(1-R)) c = -log_2(1-R) = -log2(1-(n_0-1)/n_0)
+        # c = log_2(1/(1-R)) = -log_2(1-R) ;
         #
-        # c_X is the constant for a given number of blocks n_0, and a parity
-        # check matrix H which is one block high and n_0 wide, hence
+        # so, from 2^cw = 2^lambda, given lambda and n0, we first compute c,
+        # and then
         #
-        # R=(n_0-1)/n_0
-        #
-        # c_2 = 1
-        #
-        # c_3 = 1.58
-        #
-        # c_4 = 2
-        #
-        # c_5 = 2.32
-        #
-        # so, from 2^cw = lam, given c and lam (with lam already expressed in
-        # log2) we have
-        #
-        # w = lam/c
+        # w = -lam/c
 
-        # code rate (n_0-1)/n_0
-        t1 = np.ceil(-lam / np.log2(1 - (n0 - 1) / n0))
-        # ISD(n_0*p,p,2*v) / (p* binom{n_0}{2}), attacked code rate (n_0-1)/n_0
-        v1 = np.ceil(-lam / np.log2(1 - (n0 - 1) / n0)) // 2
-        # ISD(2*p,p,2*v) / (n_0*p), attacked code rate (1/2)
-        v2 = np.ceil(-lam / np.log2(1 - 1 / 2)) // 2
-        # ISD(n_0*p,(n_0-1)*p,n_0*v) / p    attacked code rate 1/n_0
-        v3 = np.ceil(-lam / np.log2(1 - 1 / n0)) // n0
+        # MRA (SDP) ;
+        # ISD(n, k, t); code rate (n0-1)/n0
+        c = -np.log2(1 - (n0 - 1) / n0)
+        t1 = np.ceil(lam / c)
+        # NOTE: the ISD parameters in LEDA are (n, r, t) and not (n, k, t) as usual
+        # KRA1 (CFP); ISD(n0*p,p,2*v) / (p*binom{n0}{2}); code rate (n0-1)/n0;
+        # target weight = 2*v
+        c = -np.log2(1 - (n0-1) / n0)
+        v1 = np.ceil(lam / (2 * c))
+        # KRA2 (CFP); ISD(2*p,p,2*v) / (n0*p); attacked code rate (1/2); target weight = 2v
+        c = -np.log2(1 - 1 / 2)
+        v2 = np.ceil(lam / (2 * c))
+        # KRA3 (CFP); ISD(n0*p,(n0-1)*p,n0*v) / p; attacked code rate 1/n0; target weight = n0*v
+        c = -np.log2(1 - 1 / n0)
+        v3 = np.ceil(lam / (n0 * c))
 
         # KEY recovery
         v_min = min(v1, v2, v3)
         v_max = max(v1, v2, v3)
 
-        v_range_low = int(.8 * v_min)
+        v_range_low = int(.7 * v_min)
         v_range_high = int(1.3 * v_max)
 
         # v should be odd
@@ -98,7 +92,7 @@ def main():
             v_range_high += 1
 
         for v in range(v_range_low, v_range_high, 2):
-            # p*n0 = (v*n0)^2 -> p = v^2*n0
+            # since v != sqrt(n) = sqrt(p*n0) -> v**2 = p * n0 -> p = v**2 * n0
             prime_guess = v**2 * n0
 
             # Take only the acceptable primes with a +- 20% margin on the prime
@@ -117,6 +111,16 @@ def main():
                 _t = 2 * v
                 add_to_dict(values, _n, _r, _t, msg)
 
+                # key recovery 3 ISD(n0*p, (n0-1)*p, n0*v
+                msg = "KR3"
+                _n = prime * n0
+                _r = (n0 - 1) * prime
+                _t = n0 * v
+                # Note that, for this attack we are considering the dual code,
+                # and hence k<r. However, we can just store the value of the
+                # original code, and hence _n - _r.
+                add_to_dict(values, _n, _n - _r, _t, msg)
+
                 # key recovery 2 ISD(2p, p, 2v)
                 # Each n0 !=2 can be reduced to n0=2
                 if n0 != 2:
@@ -126,16 +130,12 @@ def main():
                     _t = 2 * v
                     add_to_dict(values, _n, _r, _t, msg)
 
-                # key recovery 3 ISD(n0*p, (n0-1)*p, n0*v
-                msg = "KR3"
-                _n = prime * n0
-                _r = prime
-                _t = n0 * v
-                add_to_dict(values, _n, _r, _t, msg)
 
         # Message recovery, i.e., Syndrome Decoding Problem (SDP)
-        for t in range(int(t1 * .8), int(t1 * 1.2)):
-            prime_guess = (t / 2)**2 * n0
+        # the +3 skip is just to sweep the range faster
+        for t in range(int(t1 * .8), int(t1 * 1.2), 3):
+            # same as before
+            prime_guess = t**2 * n0
             prime_range = filter(
                 lambda p: p >= int(.8 * prime_guess) and p <= int(
                     1.2 * prime_guess), proper_primes)
