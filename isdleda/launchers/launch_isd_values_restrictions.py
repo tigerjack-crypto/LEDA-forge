@@ -31,14 +31,14 @@ OUT_FILE_ISD_VALS = 'out/values/from_restrictions/isd_values.json'
 OUT_FILE_ISD_VALS_TO_COMPUTE = 'out/values/from_restrictions/isd_values_to_compute.json'
 
 # We want to explore the region around a given lambda; that is, [lamba + val[0], lambda + val[1]]
-C_INTERVALS_FUNCTS = (functools.partial(operator.add, -30),
-                      functools.partial(operator.add, 30))
+# C_INTERVALS_FUNCTS = (functools.partial(operator.add, -30),
+#                       functools.partial(operator.add, 30))
 # I am less conservative with quantum. If there's a classical speed-up of X,
 # the quantum speed-up would roughly be sqrt(X)
-Q_INTERVALS_FUNCTS = (functools.partial(operator.add, -20),
-                      functools.partial(operator.add, 20))
-# C_INTERVALS_FUNCTS = (functools.partial(operator.mul, .8), functools.partial(operator.mul, 1.2))
-# Q_INTERVALS_FUNCTS = (functools.partial(operator.mul, .8), functools.partial(operator.mul, 1.2))
+# Q_INTERVALS_FUNCTS = (functools.partial(operator.add, -20),
+#                       functools.partial(operator.add, 20))
+C_INTERVALS_FUNCTS = (functools.partial(operator.mul, .85), functools.partial(operator.mul, 1.15))
+Q_INTERVALS_FUNCTS = (functools.partial(operator.mul, .85), functools.partial(operator.mul, 1.15))
 
 # We want to emit warning if the first value explored is too close to the
 # actual value. F.e., if we have a target lambda of 100, and the first (lowest)
@@ -49,14 +49,15 @@ Q_INTERVALS_FUNCTS = (functools.partial(operator.add, -20),
 # These intervals are interpred as: If first value explored and CAES >= lambda
 # + val[0] -> WARN. If last value explored and CAES <= lambda + val[1] -> WARN
 
-C_INTERVALS_WARN_FUNCTS = (functools.partial(operator.add, -30),
-                           functools.partial(operator.add, +30))
-Q_INTERVALS_WARN_FUNCTS = (functools.partial(operator.add, -20),
-                           functools.partial(operator.add, +20))
+# C_INTERVALS_WARN_FUNCTS = (functools.partial(operator.add, -30),
+#                            functools.partial(operator.add, +30))
+# Q_INTERVALS_WARN_FUNCTS = (functools.partial(operator.add, -20),
+#                            functools.partial(operator.add, +20))
+C_INTERVALS_WARN_FUNCTS = C_INTERVALS_FUNCTS
+Q_INTERVALS_WARN_FUNCTS = Q_INTERVALS_FUNCTS
 
-
-def check_frontier(low: bool, caes, c_lambda, qaes, q_lambda, msg: str, n, k,
-                   t):
+def check_frontier(low: bool, caes: float, c_lambda: int, qaes: float,
+                   q_lambda: int, msg: str, n: int, k: int, t: int):
     """Either low or up frontier"""
     isd_values = []
     # exploring_range
@@ -84,7 +85,7 @@ def check_frontier(low: bool, caes, c_lambda, qaes, q_lambda, msg: str, n, k,
         LOGGER.warning(f"(c_aes, q_aes) = ({caes, qaes})")
         LOGGER.warning(f"{n:06}_{k:06}_{t:03}")
         # increase the t of a value inversely proportional to the max difference
-        for i in range(1, int(20 * 1/int(max(caes_diff, qaes_diff, 1))), 3):
+        for i in range(1, int(20 * 1 / int(max(caes_diff, qaes_diff, 1))), 3):
             val = ISDValue(n, n - k, t + i)
             isd_values.append(val)
     return isd_values
@@ -134,18 +135,23 @@ def get_filenames(
     filenames: List[str]
     # directory: str
 ) -> Dict[int, Dict[int, Dict[int, str]]]:
-    filenames = sorted([Path(x).stem for x in filenames])
+    # filenames = [Path(x).stem for x in filenames]
 
     filenames_idx_by_p: Dict[int, Dict[int,
                                        Dict[int,
                                             str]]] = defaultdict(_nested_dict)
     for fname in filenames:
-        n, k, t = [int(x) for x in fname.split('_')]
+        n, k, t = [int(x) for x in Path(fname).stem.split('_')]
         p = n - k
         n0 = n // p
+        
+        # pdic = filenames_idx_by_p.get(p, {})
+        # n0dic = pdic.get(n0, {})
+        # tdic = n0dic.get(t, {})
         filenames_idx_by_p[p][n0][t] = fname
-    filenames_idx_by_p_sorted = _convert_to_sorteddict(filenames_idx_by_p)
-    return filenames_idx_by_p_sorted
+    return filenames_idx_by_p
+    # filenames_idx_by_p_sorted = _convert_to_sorteddict(filenames_idx_by_p)
+    # return filenames_idx_by_p_sorted
 
 
 def param(
@@ -173,11 +179,14 @@ def param(
 
     # These keys are sorted
     ps = [*filenames_idx_by_p]
-    pmin, pmax = ps[0], ps[-1]  # min value of r given the filenames
+    # pmin, pmax = ps[0], ps[-1]  # min value of r given the filenames
     # to_generate: Set[Value]
-    for p, n0 in itertools.product(range(int(pmin), int(pmax) + 1), (2, 6)):
+    nrange = range(2, 6)
+    for p, n0 in itertools.product(ps, nrange):
         complexities: Dict[str, Tuple[float, float]] = {}
         complexities["Target"] = (c_lambda, q_lambda)
+        min_complexity_c: int
+        min_complexity_q: int
         n = p * n0
         r = p
         k = n - r
@@ -185,8 +194,8 @@ def param(
             filenames_idx_by_p[p][n0]
         except KeyError:
             continue
-        ts_sorted = sorted(filenames_idx_by_p[p][n0])
-        tmin, tmax = ts_sorted[0], ts_sorted[-1]
+        ts = [*filenames_idx_by_p[p][n0]]
+        tmin, tmax = ts[0], ts[-1]
         # Sweep all the t values in the range, even if not present in the
         # dataset. Note that even if the t is not present, the complexity
         # values are still approximated (if possible) using the closest t
@@ -413,12 +422,14 @@ def main():
 
     print(f"Values available {len(filenames)}")
     print("*" * 80)
+    acc_leda = 0
     for level, c_lambda, q_lambda in zip((1, 3, 5), AES_LAMBDAS, QAES_LAMBDAS):
         print(f"Level {level}: (AES, QAES) = ({c_lambda}, {q_lambda})")
         leda_values, isd_values, isd_values_to_compute = param(
             c_lambda,
             q_lambda,  # filenames,
             filenames_idx_by_p_sorted)
+        acc_leda += len(leda_values)
         print(f"LEDA values obtained: {len(leda_values)}")
         print(f"ISD values obtained {len(isd_values)}")
         print(f"ISD values to compute obtained {len(isd_values_to_compute)}")
@@ -427,7 +438,7 @@ def main():
         isd_vals.update(isd_values)
         isd_vals_to_compute.update(isd_values_to_compute)
 
-    print(f"LEDA values TOTAL {len(leda_vals)}")
+    print(f"LEDA values TOTAL {acc_leda}")
     print(f"ISD values TOTAL {len(isd_vals)}")
     print(f"ISD values to compute TOTAL {len(isd_vals_to_compute)}")
 
