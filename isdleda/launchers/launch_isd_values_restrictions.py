@@ -119,7 +119,7 @@ def get_complexity(n, k, t) -> Optional[Tuple[float, float]]:
 
 # Define the nested defaultdict initialization
 def _nested_dict():
-    return defaultdict(lambda: defaultdict(dict))
+    return defaultdict(_nested_dict)
 
 
 def _convert_to_sorteddict(d):
