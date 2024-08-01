@@ -223,6 +223,7 @@ def param(
                     f"- MRA: p = {p}, n0 = {n0}, *t* = {t}! ", n, k, t)
                 isd_values_to_compute.extend(vals)
             complexities['MRA'] = (caes, qaes)
+            min_complexity_c, min_complexity_q = caes, qaes
 
             # arbitrary start range, considering that t=(2*v, 2*v, n0*v)
             vmin = t // (n0 + 2)
@@ -268,6 +269,8 @@ def param(
                         _t)
                     isd_values_to_compute.extend(vals)
                 complexities['KRA1'] = (caes, qaes)
+                min_complexity_c = caes if caes < min_complexity_c else min_complexity_c
+                min_complexity_q = qaes if qaes < min_complexity_q else min_complexity_q
                 # KRA3
                 _n = n0 * p
                 _k = (n0 - 1) * p
@@ -298,6 +301,8 @@ def param(
                         f"- KRA3: p = {p}, n0 = {n0}, v = {t}! ", _n, _k, _t)
                     isd_values_to_compute.extend(vals)
                 complexities['KRA3'] = (caes, qaes)
+                min_complexity_c = caes if caes < min_complexity_c else min_complexity_c
+                min_complexity_q = qaes if qaes < min_complexity_q else min_complexity_q
 
                 if n0 != 2:
                     # KRA2
@@ -332,6 +337,9 @@ def param(
                             _t)
                         isd_values_to_compute.extend(vals)
                     complexities['KRA2'] = (c_compl - red, 2 * (q_compl - red))
+                    min_complexity_c = caes if caes < min_complexity_c else min_complexity_c
+                    min_complexity_q = qaes if qaes < min_complexity_q else min_complexity_q
+                complexities['Minimum'] = (min_complexity_c, min_complexity_q)
                 leda_values.append(
                     LEDAValue(p=p,
                               n0=n0,
