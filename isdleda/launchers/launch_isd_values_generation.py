@@ -9,6 +9,7 @@ from dataclasses import asdict
 from typing import Dict
 
 import numpy as np
+from isdleda.launchers.launcher_utils import AES_LAMBDAS
 from isdleda.utils.common import ISDValue
 from isdleda.utils.export.export import save_to_json
 
@@ -47,7 +48,8 @@ def main():
     assert proper_primes is not None
     n0_values = range(2, 6)
 
-    lambda_values = (128, 192, 256)
+    # lambda_values = (128, 192, 256)
+    lambda_values = AES_LAMBDAS
     values: Dict[str, ISDValue] = dict()
 
     for n0, lam in itertools.product(n0_values, lambda_values):
@@ -95,7 +97,7 @@ def main():
             # since v != sqrt(n) = sqrt(p*n0) -> v**2 = p * n0 -> p = v**2 * n0
             prime_guess = v**2 * n0
 
-            # Take only the acceptable primes with a +- 20% margin on the prime
+            # Take only the acceptable primes with a +-20% margin on the prime
             # guess
             prime_range = filter(
                 lambda p: p >= int(.8 * prime_guess) and p <= int(
@@ -114,12 +116,11 @@ def main():
                 # key recovery 3 ISD(n0*p, (n0-1)*p, n0*v
                 msg = "KR3"
                 _n = prime * n0
+                # Note that, for this attack we are considering the dual code,
+                # and hence k<r. 
                 _r = (n0 - 1) * prime
                 _t = n0 * v
-                # Note that, for this attack we are considering the dual code,
-                # and hence k<r. However, we can just store the value of the
-                # original code, and hence _n - _r.
-                add_to_dict(values, _n, _n - _r, _t, msg)
+                add_to_dict(values, _n, _r, _t, msg)
 
                 # key recovery 2 ISD(2p, p, 2v)
                 # Each n0 !=2 can be reduced to n0=2
