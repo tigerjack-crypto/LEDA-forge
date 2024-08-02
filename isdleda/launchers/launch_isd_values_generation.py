@@ -94,7 +94,7 @@ def main():
             v_range_high += 1
 
         for v in range(v_range_low, v_range_high, 2):
-            # since v != sqrt(n) = sqrt(p*n0) -> v**2 = p * n0 -> p = v**2 * n0
+            # since v ~= sqrt(n) = sqrt(p*n0) -> v**2 = p * n0 -> p = v**2 * n0
             prime_guess = v**2 * n0
 
             # Take only the acceptable primes with a +-20% margin on the prime
