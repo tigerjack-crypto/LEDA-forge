@@ -22,7 +22,7 @@ def plot_data_plotly(qvals_dic: dict, title: str, out_file_name: str, lambda_val
     min_second = np.inf
     max_second = 0
 
-    colors = ('blue', 'purple', 'green', 'orange')
+    colors = ('blue', 'purple', 'green', 'orange', 'violet')
     fig = go.Figure()
     for idx, (ratio, values) in enumerate(qvals_dic.items()):
         # n, k, t, time
@@ -115,18 +115,30 @@ def plot_data_plotly(qvals_dic: dict, title: str, out_file_name: str, lambda_val
         pio.write_html(fig, file=html_filename, include_plotlyjs='cdn')
 
 
-def main():
+def plot_eb():
     for mem_access in MemAccess:
         vals_dic = load_from_pickle(
             os.path.join("sshfs_mountpoint", "vc", "isd-leda",
                          OUT_PLOTS_DATA_DIR, f"cisd_eb_{mem_access.name}"))
         plot_data_plotly(vals_dic, f"EB tool - {mem_access.name}",
                          f"cisd_eb_{mem_access.name}", AES_LAMBDAS)
-
+def plot_qlb():
     vals_dic = load_from_pickle(
         os.path.join("sshfs_mountpoint", "vc", "isd-leda", OUT_PLOTS_DATA_DIR,
                      "q_lb"))
     plot_data_plotly(vals_dic, "PBP - Quantum L-B", "q_lb", QAES_LAMBDAS)
+
+def plot_ledatool():
+    for key in ("classic", "quantum"):
+        vals_dic = load_from_pickle(
+            os.path.join("sshfs_mountpoint", "vc", "isd-leda", OUT_PLOTS_DATA_DIR,
+                        f"ledatools_{key}"))
+        plot_data_plotly(vals_dic, "LEDAtool", f"LEDAtool_{key}", QAES_LAMBDAS)
+
+def main():
+    plot_eb()
+    plot_qlb()
+    plot_ledatool()
 
 
 if __name__ == '__main__':
