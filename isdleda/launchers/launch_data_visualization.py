@@ -26,7 +26,8 @@ def plot_data_plotly(qvals_dic: dict, title: str, out_file_name: str, lambda_val
     fig = go.Figure()
     for idx, (ratio, values) in enumerate(qvals_dic.items()):
         # n, k, t, time
-        first_values, _, second_values, third_values = zip(*values)
+        # selected_values = 
+        first_values, _, second_values, third_values = zip(*values[::10])
         fig.add_trace(
             go.Scatter3d(
                 x=first_values,
@@ -38,20 +39,6 @@ def plot_data_plotly(qvals_dic: dict, title: str, out_file_name: str, lambda_val
                 hovertemplate=
                 '<b>n</b>: %{x}<br><b>weight</b>: %{y}<br><b>time</b>: %{z}<extra>%{fullData.name}</extra>'  # Custom hover text
             ))
-        # Dummy trace for the legend with larger markers
-        # But this doesn't allow to toggle visibility anymore :(
-        # fig.add_trace(
-        #     go.Scatter3d(
-        #         x=[None],
-        #         y=[None],
-        #         z=[None],
-        #         mode='markers',
-        #         name=ratio,
-        #         marker=dict(
-        #             size=10,
-        #             color=colors[idx]),  # Larger markers for the legend
-        #         showlegend=True,
-        #     ))
         _val = min(first_values)
         if _val < min_first:
             min_first = _val
@@ -69,8 +56,7 @@ def plot_data_plotly(qvals_dic: dict, title: str, out_file_name: str, lambda_val
         x = np.linspace(min_first, max_first, 10)
         y = np.linspace(min_second, max_second, 10)
         x, y = np.meshgrid(x, y)
-        # Values taken from my Ph.D. Thesis, table 6.5 (Jan+22)
-        # Nist uses the ones from Jaques though.
+
         z1 = np.full_like(x, lambda_vals[0])
         z2 = np.full_like(x, lambda_vals[1])
         z3 = np.full_like(x, lambda_vals[2])
@@ -108,12 +94,12 @@ def plot_data_plotly(qvals_dic: dict, title: str, out_file_name: str, lambda_val
                           scene=dict(xaxis_title='n',
                                      yaxis_title='weight',
                                      zaxis_title='time'),
-                          legend_title="n0")
+                          legend_title="Rate")
 
         # Save each figure as an HTML file
         html_filename = f"{OUT_PLOTS_DIR}/{out_file_name}.html"
+        print(f"Plotting to {html_filename}")
         pio.write_html(fig, file=html_filename, include_plotlyjs='cdn')
-
 
 def plot_eb():
     for mem_access in MemAccess:
@@ -135,10 +121,18 @@ def plot_ledatool():
                         f"ledatools_{key}"))
         plot_data_plotly(vals_dic, "LEDAtool", f"LEDAtool_{key}", QAES_LAMBDAS)
 
+def plot_ledatool_ledaparams():
+    for key in ("classic", "quantum"):
+        vals_dic = load_from_pickle(
+            os.path.join("sshfs_mountpoint", "vc", "isd-leda", OUT_PLOTS_DATA_DIR,
+                        f"ledatools_ledaparams_{key}"))
+        plot_data_plotly(vals_dic, "LEDAtool - LEDA params", f"LEDAtool_ledaparams_{key}", QAES_LAMBDAS)
+
 def main():
-    plot_eb()
-    plot_qlb()
-    plot_ledatool()
+    # plot_eb()
+    # plot_qlb()
+    # plot_ledatool()
+    plot_ledatool_ledaparams()
 
 
 if __name__ == '__main__':
