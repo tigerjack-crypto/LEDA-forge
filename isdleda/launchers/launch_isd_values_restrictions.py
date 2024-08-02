@@ -7,7 +7,6 @@ this tool deems worth exploring, it produces all those values
 
 """
 import functools
-import itertools
 import json
 import logging
 import operator
@@ -37,8 +36,11 @@ OUT_FILE_ISD_VALS_TO_COMPUTE = 'out/values/from_restrictions/isd_values_to_compu
 # the quantum speed-up would roughly be sqrt(X)
 # Q_INTERVALS_FUNCTS = (functools.partial(operator.add, -20),
 #                       functools.partial(operator.add, 20))
-C_INTERVALS_FUNCTS = (functools.partial(operator.mul, .85), functools.partial(operator.mul, 1.15))
-Q_INTERVALS_FUNCTS = (functools.partial(operator.mul, .85), functools.partial(operator.mul, 1.15))
+C_INTERVALS_FUNCTS = (functools.partial(operator.mul, .8),
+                      functools.partial(operator.mul, 1.2))
+# Bigger confidence interval for quantum since there may be other breakthroughs
+Q_INTERVALS_FUNCTS = (functools.partial(operator.mul, .7),
+                      functools.partial(operator.mul, 1.3))
 
 # We want to emit warning if the first value explored is too close to the
 # actual value. F.e., if we have a target lambda of 100, and the first (lowest)
@@ -47,19 +49,35 @@ Q_INTERVALS_FUNCTS = (functools.partial(operator.mul, .85), functools.partial(op
 # f.e. at the last iteration we have a value of 102.
 #
 # These intervals are interpred as: If first value explored and CAES >= lambda
-# + val[0] -> WARN. If last value explored and CAES <= lambda + val[1] -> WARN
+# * val[0] -> WARN. If last value explored and CAES <= lambda + val[1] -> WARN
 
-# C_INTERVALS_WARN_FUNCTS = (functools.partial(operator.add, -30),
-#                            functools.partial(operator.add, +30))
-# Q_INTERVALS_WARN_FUNCTS = (functools.partial(operator.add, -20),
-#                            functools.partial(operator.add, +20))
-C_INTERVALS_WARN_FUNCTS = C_INTERVALS_FUNCTS
-Q_INTERVALS_WARN_FUNCTS = Q_INTERVALS_FUNCTS
+C_INTERVALS_WARN_FUNCTS = (functools.partial(operator.add, -25),
+                           functools.partial(operator.add, +25))
+Q_INTERVALS_WARN_FUNCTS = (functools.partial(operator.add, -20),
+                           functools.partial(operator.add, +20))
+# C_INTERVALS_WARN_FUNCTS = C_INTERVALS_FUNCTS
+# Q_INTERVALS_WARN_FUNCTS = Q_INTERVALS_FUNCTS
+
+
+def generate_new_t_values(n, k, t, caes_diff, qaes_diff, lower):
+    isd_values = []
+    if lower:
+        parameter = -90
+        step = -1
+    else:
+        parameter = 90
+        step = 1
+
+    for i in range(int(parameter * 1 / max(caes_diff, qaes_diff, 1)), step, 3):
+        if i < 0 and lower: break
+        val = ISDValue(n, n - k, t + i)
+        isd_values.append(val)
+    return isd_values
+
 
 def check_frontier(low: bool, caes: float, c_lambda: int, qaes: float,
                    q_lambda: int, msg: str, n: int, k: int, t: int):
     """Either low or up frontier"""
-    isd_values = []
     # exploring_range
     # low (i.e., first value explored) and (caes> c_lambda - 20 or qaes> q_lambda - 20)
     caes_diff = caes - C_INTERVALS_WARN_FUNCTS[0](c_lambda)
@@ -70,10 +88,8 @@ def check_frontier(low: bool, caes: float, c_lambda: int, qaes: float,
         LOGGER.warning(f"(c_lambda, q_lambda) = ({c_lambda, q_lambda})")
         LOGGER.warning(f"(c_aes, q_aes) = ({caes, qaes})")
         LOGGER.warning(f"{n:06}_{k:06}_{t:03}")
+        return generate_new_t_values(n, k, t, caes_diff, qaes_diff, True)
         # decrease the t of a value inversely proportional to the max difference
-        for i in range(int(-20 * 1 / max(caes_diff, qaes_diff, 1)), -1, 3):
-            val = ISDValue(n, n - k, t + i)
-            isd_values.append(val)
     # high (i.e., last value explored) and (caes< c_lambda + 20 or qaes< q_lambda + 20)
 
     caes_diff = caes - C_INTERVALS_WARN_FUNCTS[1](c_lambda)
@@ -84,11 +100,9 @@ def check_frontier(low: bool, caes: float, c_lambda: int, qaes: float,
         LOGGER.warning(f"(c_lambda, q_lambda) = ({c_lambda, q_lambda})")
         LOGGER.warning(f"(c_aes, q_aes) = ({caes, qaes})")
         LOGGER.warning(f"{n:06}_{k:06}_{t:03}")
-        # increase the t of a value inversely proportional to the max difference
-        for i in range(1, int(20 * 1 / int(max(caes_diff, qaes_diff, 1))), 3):
-            val = ISDValue(n, n - k, t + i)
-            isd_values.append(val)
-    return isd_values
+        return generate_new_t_values(n, k, t, caes_diff, qaes_diff, False)
+
+    return []
 
 
 def get_complexity(n, k, t) -> Optional[Tuple[float, float]]:
@@ -100,8 +114,8 @@ def get_complexity(n, k, t) -> Optional[Tuple[float, float]]:
     # on t, results in a (-4, +4) on the (log2) classical complexity. On the
     # other hand, taking the highest n, it results in (-8, +8).
     #
-    # To have a quick compensation, I approximately add the diff (t - _t) to
-    # the result. For the quantum side, these values are halved.
+    # To have a quick reasonable compensation, I approximately add the diff
+    # 2*(t - _t) to the result. For the quantum side, these values are halved.
 
     for _t in (t, t + 1, t - 1, t + 2, t - 2, t - 3, t + 3):
         filename = OUT_FILES_CLEDA_FMT.format(out_type='json',
@@ -114,7 +128,7 @@ def get_complexity(n, k, t) -> Optional[Tuple[float, float]]:
                 data = json.load(f)
                 cval = data['Classic']['Plain']['value']
                 qval = data['Quantum']['Plain']['value']
-                return cval + (t - _t), qval + (t - _t) / 2
+                return cval + 2*(t - _t), qval + (t - _t)
     return None
 
 
@@ -144,14 +158,14 @@ def get_filenames(
         n, k, t = [int(x) for x in Path(fname).stem.split('_')]
         p = n - k
         n0 = n // p
-        
+
         # pdic = filenames_idx_by_p.get(p, {})
         # n0dic = pdic.get(n0, {})
         # tdic = n0dic.get(t, {})
         filenames_idx_by_p[p][n0][t] = fname
-    return filenames_idx_by_p
-    # filenames_idx_by_p_sorted = _convert_to_sorteddict(filenames_idx_by_p)
-    # return filenames_idx_by_p_sorted
+    # return filenames_idx_by_p
+    filenames_idx_by_p_sorted = _convert_to_sorteddict(filenames_idx_by_p)
+    return filenames_idx_by_p_sorted
 
 
 def param(
@@ -182,144 +196,84 @@ def param(
     # pmin, pmax = ps[0], ps[-1]  # min value of r given the filenames
     # to_generate: Set[Value]
     nrange = range(2, 6)
-    for p, n0 in itertools.product(ps, nrange):
-        complexities: Dict[str, Tuple[float, float]] = {}
-        complexities["Target"] = (c_lambda, q_lambda)
-        min_complexity_c: int
-        min_complexity_q: int
-        n = p * n0
-        r = p
-        k = n - r
-        try:
-            filenames_idx_by_p[p][n0]
-        except KeyError:
-            continue
-        ts = [*filenames_idx_by_p[p][n0]]
-        tmin, tmax = ts[0], ts[-1]
-        # Sweep all the t values in the range, even if not present in the
-        # dataset. Note that even if the t is not present, the complexity
-        # values are still approximated (if possible) using the closest t
-        # value.
-        trange = range(tmin, tmax + 1)
-        for i, t in enumerate(trange):
-            res = get_complexity(n, k, t)
-            if res is None:
-                continue  # next t
-            # MRA
-            c_compl, q_compl = res
-            # DOOM
-            red = log2(p) / 2
-            caes = c_compl - red
-            # For the quantum part, the threshold values are given by twice the
-            # depth of the circuit (check Eq. 6.6 of my phd.thesis)
-            qaes = 2 * (q_compl - red)
-            caes_diff_low = caes - C_INTERVALS_FUNCTS[0](c_lambda)
-            qaes_diff_low = qaes - Q_INTERVALS_FUNCTS[0](q_lambda)
-            caes_diff_high = caes - C_INTERVALS_FUNCTS[1](c_lambda)
-            qaes_diff_high = qaes - Q_INTERVALS_FUNCTS[1](q_lambda)
-            if caes_diff_low <= 0 or qaes_diff_low <= 0:
-                continue  # next t
-            if caes_diff_high >= 0 or qaes_diff_high >= 0:
-                break  # do not keep increasing the ts, it's useless, we'll have higher values
-            if i == 0:
-                vals = check_frontier(
-                    True, caes, c_lambda, qaes, q_lambda,
-                    f"- MRA: p = {p}, n0 = {n0}, *t* = {t}! ", n, k, t)
-                isd_values_to_compute.extend(vals)
-            elif i == len(trange) - 1:
-                vals = check_frontier(
-                    False, caes, c_lambda, qaes, q_lambda,
-                    f"- MRA: p = {p}, n0 = {n0}, *t* = {t}! ", n, k, t)
-                isd_values_to_compute.extend(vals)
-            complexities['MRA'] = (caes, qaes)
-            min_complexity_c, min_complexity_q = caes, qaes
-
-            # arbitrary start range, considering that t=(2*v, 2*v, n0*v)
-            vmin = t // (n0 + 2)
-            # vmin should be odd
-            if vmin % 2 == 0:
-                vmin += 1
-            # arbitrary end range
-            vmax = tmax * 3
-            if vmax % 2 == 0:
-                vmax += 1
-
-            vrange = range(vmin, vmax + 1, 2)
-            for j, v in enumerate(vrange):
-                # KRA1
-                _n = n0 * p
-                _k = (n0 - 1) * p
-                _t = 2 * v
-                # explicit ncr(n0;2)
-                red = log2(n0) + log2(n0 - 1) - 1
-                res = get_complexity(_n, _k, _t)
-                if res is None:
-                    continue  # next v
-                c_compl, q_compl = res
-                caes = c_compl - red
-                qaes = 2 * (q_compl - red)
-                secure_ok_low = caes >= C_INTERVALS_FUNCTS[0](
-                    c_lambda) and qaes >= Q_INTERVALS_FUNCTS[0](q_lambda)
-                if not secure_ok_low:
-                    continue  # not reaching min security, next v
-                secure_ok_high = caes <= C_INTERVALS_FUNCTS[1](
-                    c_lambda) and qaes <= Q_INTERVALS_FUNCTS[1](q_lambda)
-                if not secure_ok_high:
-                    break  # security too high, do not keep trying greater vs
-                if j == 0:
-                    vals = check_frontier(
-                        True, caes, c_lambda, qaes, q_lambda,
-                        f"- KRA1: p = {p}, n0 = {n0}, *v* = {t}! ", _n, _k, _t)
-                    isd_values_to_compute.extend(vals)
-                elif j == len(vrange) - 1:
-                    vals = check_frontier(
-                        False, caes, c_lambda, qaes, q_lambda,
-                        f"- KRA1: p = {p}, n0 = {n0}, *v* = {t})! ", _n, _k,
-                        _t)
-                    isd_values_to_compute.extend(vals)
-                complexities['KRA1'] = (caes, qaes)
-                min_complexity_c = caes if caes < min_complexity_c else min_complexity_c
-                min_complexity_q = qaes if qaes < min_complexity_q else min_complexity_q
-                # KRA3
-                _n = n0 * p
-                _k = (n0 - 1) * p
-                _t = n0 * v
-                red = log2(p)
-                res = get_complexity(_n, _k, _t)
+    for p in ps:
+        for n0 in nrange:
+            complexities: Dict[str, Tuple[float, float]] = {}
+            complexities["Target"] = (c_lambda, q_lambda)
+            min_complexity_c: int
+            min_complexity_q: int
+            try:
+                ts = [*filenames_idx_by_p[p][n0]]
+            except KeyError:
+                continue  # next n0
+            tmin, tmax = ts[0], ts[-1]
+            # Sweep all the t values in the range, even if not present in the
+            # dataset. Note that even if the t is not present, the complexity
+            # values are still approximated (if possible) using the closest t
+            # value.
+            trange = range(tmin, tmax + 1)
+            n_ts_explored = 0
+            for i, t in enumerate(trange):
+                _n = p * n0
+                _r = p
+                _k = _n - _r
+                _w = t
+                # MRA
+                res = get_complexity(_n, _k, _w)
                 if res is None:
                     continue  # next t
+                n_ts_explored += 1
                 c_compl, q_compl = res
+                # DOOM
+                red = log2(p) / 2
                 caes = c_compl - red
+                # For the quantum part, the threshold values are given by twice the
+                # depth of the circuit (check Eq. 6.6 of my phd.thesis)
                 qaes = 2 * (q_compl - red)
-                secure_ok_low = caes >= C_INTERVALS_FUNCTS[0](
-                    c_lambda) and qaes >= Q_INTERVALS_FUNCTS[0](q_lambda)
-                if not secure_ok_low:
-                    continue  # not reaching min security, next v
-                secure_ok_high = caes <= C_INTERVALS_FUNCTS[1](
-                    c_lambda) and qaes <= Q_INTERVALS_FUNCTS[1](q_lambda)
-                if not secure_ok_high:
-                    break  # security too high, do not keep trying greater vs
-                if j == 0:
+                caes_diff_low = caes - C_INTERVALS_FUNCTS[0](c_lambda)
+                qaes_diff_low = qaes - Q_INTERVALS_FUNCTS[0](q_lambda)
+                caes_diff_high = caes - C_INTERVALS_FUNCTS[1](c_lambda)
+                qaes_diff_high = qaes - Q_INTERVALS_FUNCTS[1](q_lambda)
+                if caes_diff_low <= 0 or qaes_diff_low <= 0:
+                    continue  # next t
+                if caes_diff_high >= 0 or qaes_diff_high >= 0:
+                    if i != 0 and n_ts_explored == 0:
+                        # TODO double check
+                        generate_new_t_values(_n, _k, _w, caes_diff_low,
+                                              qaes_diff_low, True)
+                    break  # do not keep increasing the ts, it's useless, we'll have higher values
+
+                if i == 0:
                     vals = check_frontier(
                         True, caes, c_lambda, qaes, q_lambda,
-                        f"- KRA3: p = {p}, n0 = {n0}, v = {t}! ", _n, _k, _t)
+                        f"- MRA: p = {p}, n0 = {n0}, *t* = {t}! ", _n, _k, _w)
                     isd_values_to_compute.extend(vals)
-                elif j == len(vrange) - 1:
+                elif i == len(trange) - 1:
                     vals = check_frontier(
                         False, caes, c_lambda, qaes, q_lambda,
-                        f"- KRA3: p = {p}, n0 = {n0}, v = {t}! ", _n, _k, _t)
+                        f"- MRA: p = {p}, n0 = {n0}, *t* = {t}! ", _n, _k, _w)
                     isd_values_to_compute.extend(vals)
-                complexities['KRA3'] = (caes, qaes)
-                min_complexity_c = caes if caes < min_complexity_c else min_complexity_c
-                min_complexity_q = qaes if qaes < min_complexity_q else min_complexity_q
+                complexities['MRA'] = (caes, qaes)
+                min_complexity_c, min_complexity_q = caes, qaes
 
-                if n0 != 2:
-                    # KRA2
+                vmin = t // 4
+                # vmin should be odd
+                if vmin % 2 == 0:
+                    vmin += 1
+                # arbitrary end range
+                vmax = tmax * n0
+                if vmax % 2 == 0:
+                    vmax += 1
+
+                vrange = range(vmin, vmax + 1, 2)
+                for j, v in enumerate(vrange):
+                    # KRA1
                     _n = n0 * p
-                    _k = 2 * p
-                    _t = 2 * v
-                    red = log2(n0 * p)
-                    res = get_complexity(_n, _k, _t)
+                    _k = (n0 - 1) * p
+                    _w = 2 * v
+                    # explicit ncr(n0;2)
+                    red = log2(n0) + log2(n0 - 1) - 1
+                    res = get_complexity(_n, _k, _w)
                     if res is None:
                         continue  # next v
                     c_compl, q_compl = res
@@ -332,34 +286,122 @@ def param(
                     secure_ok_high = caes <= C_INTERVALS_FUNCTS[1](
                         c_lambda) and qaes <= Q_INTERVALS_FUNCTS[1](q_lambda)
                     if not secure_ok_high:
-                        break  # security too high, do not keep trying greater v's
+                        if i != 0 and n_ts_explored == 0:
+                            # TODO double check
+                            generate_new_t_values(_n, _k, _w, caes_diff_low,
+                                                  qaes_diff_low, True)
+                        break  # security too high, do not keep trying greater vs
                     if j == 0:
                         vals = check_frontier(
                             True, caes, c_lambda, qaes, q_lambda,
-                            f"- KRA2: p = {p}, n0 = {n0}, v = {t}! ", _n, _k,
-                            _t)
+                            f"- KRA1: p = {p}, n0 = {n0}, *v* = {t}!", _n, _k,
+                            _w)
                         isd_values_to_compute.extend(vals)
                     elif j == len(vrange) - 1:
                         vals = check_frontier(
                             False, caes, c_lambda, qaes, q_lambda,
-                            f"- KRA2: p = {p}, n0 = {n0}, v = {t}! ", _n, _k,
-                            _t)
+                            f"- KRA1: p = {p}, n0 = {n0}, *v* = {t})!", _n, _k,
+                            _w)
                         isd_values_to_compute.extend(vals)
-                    complexities['KRA2'] = (c_compl - red, 2 * (q_compl - red))
+                    complexities['KRA1'] = (caes, qaes)
                     min_complexity_c = caes if caes < min_complexity_c else min_complexity_c
                     min_complexity_q = qaes if qaes < min_complexity_q else min_complexity_q
-                complexities['Minimum'] = (min_complexity_c, min_complexity_q)
-                leda_values.append(
-                    LEDAValue(p=p,
-                              n0=n0,
-                              t=t,
-                              v=v,
-                              msgs=[f"Complexities: {complexities}"]))
-                isd_values.append(ISDValue(n, n - k, t))
+                    # KRA3
+                    _n = n0 * p
+                    # NOTE: the original formulation has _k = p, and hence _k < _r,
+                    # since we're considering the dual code.
+                    _k = p
+                    _w = n0 * v
+                    red = log2(p)
+                    res = get_complexity(_n, _k, _w)
+                    if res is None:
+                        continue  # next t
+                    c_compl, q_compl = res
+                    caes = c_compl - red
+                    qaes = 2 * (q_compl - red)
+                    secure_ok_low = caes >= C_INTERVALS_FUNCTS[0](
+                        c_lambda) and qaes >= Q_INTERVALS_FUNCTS[0](q_lambda)
+                    if not secure_ok_low:
+                        continue  # not reaching min security, next v
+                    secure_ok_high = caes <= C_INTERVALS_FUNCTS[1](
+                        c_lambda) and qaes <= Q_INTERVALS_FUNCTS[1](q_lambda)
+                    if not secure_ok_high:
+                        if i != 0 and n_ts_explored == 0:
+                            # TODO double check
+                            generate_new_t_values(_n, _k, _w, caes_diff_low,
+                                                  qaes_diff_low, True)
+                    if j == 0:
+                        vals = check_frontier(
+                            True, caes, c_lambda, qaes, q_lambda,
+                            f"- KRA3: p = {p}, n0 = {n0}, v = {t}! ", _n, _k,
+                            _w)
+                        isd_values_to_compute.extend(vals)
+                    elif j == len(vrange) - 1:
+                        vals = check_frontier(
+                            False, caes, c_lambda, qaes, q_lambda,
+                            f"- KRA3: p = {p}, n0 = {n0}, v = {t}! ", _n, _k,
+                            _w)
+                        isd_values_to_compute.extend(vals)
+                    complexities['KRA3'] = (caes, qaes)
+                    min_complexity_c = caes if caes < min_complexity_c else min_complexity_c
+                    min_complexity_q = qaes if qaes < min_complexity_q else min_complexity_q
 
-            # end v loop
-        # end t loop
-    # end p, n0 loop
+                    if n0 != 2:
+                        # KRA2
+                        _n = 2 * p
+                        _k = p
+                        _w = 2 * v
+                        red = log2(n0 * p)
+                        res = get_complexity(_n, _k, _w)
+                        if res is None:
+                            continue  # next v
+                        c_compl, q_compl = res
+                        caes = c_compl - red
+                        qaes = 2 * (q_compl - red)
+                        secure_ok_low = caes >= C_INTERVALS_FUNCTS[0](
+                            c_lambda) and qaes >= Q_INTERVALS_FUNCTS[0](
+                                q_lambda)
+                        if not secure_ok_low:
+                            continue  # not reaching min security, next v
+                        secure_ok_high = caes <= C_INTERVALS_FUNCTS[1](
+                            c_lambda) and qaes <= Q_INTERVALS_FUNCTS[1](
+                                q_lambda)
+                        if not secure_ok_high:
+                            if i != 0 and n_ts_explored == 0:
+                                # TODO double check
+                                generate_new_t_values(_n, _k, _w,
+                                                      caes_diff_low,
+                                                      qaes_diff_low, True)
+                        if j == 0:
+                            vals = check_frontier(
+                                True, caes, c_lambda, qaes, q_lambda,
+                                f"- KRA2: p = {p}, n0 = {n0}, v = {t}! ", _n,
+                                _k, _w)
+                            isd_values_to_compute.extend(vals)
+                        elif j == len(vrange) - 1:
+                            vals = check_frontier(
+                                False, caes, c_lambda, qaes, q_lambda,
+                                f"- KRA2: p = {p}, n0 = {n0}, v = {t}! ", _n,
+                                _k, _w)
+                            isd_values_to_compute.extend(vals)
+                        complexities['KRA2'] = (c_compl - red,
+                                                2 * (q_compl - red))
+                        min_complexity_c = caes if caes < min_complexity_c else min_complexity_c
+                        min_complexity_q = qaes if qaes < min_complexity_q else min_complexity_q
+                    complexities['Minimum'] = (min_complexity_c,
+                                               min_complexity_q)
+                    leda_values.append(
+                        LEDAValue(p=p,
+                                  n0=n0,
+                                  t=t,
+                                  v=v,
+                                  msgs=[f"Complexities: {complexities}"]))
+                    isd_values.append(ISDValue(p * n0, p * (n0 - 1), t))
+
+                # end v loop
+            # end t loop
+        # end p
+    # end n0 loop
 
     return set(leda_values), set(isd_values), set(isd_values_to_compute)
 
