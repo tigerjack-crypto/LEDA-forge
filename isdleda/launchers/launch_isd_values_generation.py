@@ -71,7 +71,7 @@ def main():
         # NOTE: the ISD parameters in LEDA are (n, r, t) and not (n, k, t) as usual
         # KRA1 (CFP); ISD(n0*p,p,2*v) / (p*binom{n0}{2}); code rate (n0-1)/n0;
         # target weight = 2*v
-        c = -np.log2(1 - (n0-1) / n0)
+        c = -np.log2(1 - (n0 - 1) / n0)
         v1 = np.ceil(lam / (2 * c))
         # KRA2 (CFP); ISD(2*p,p,2*v) / (n0*p); attacked code rate (1/2); target weight = 2v
         c = -np.log2(1 - 1 / 2)
@@ -117,7 +117,7 @@ def main():
                 msg = "KR3"
                 _n = prime * n0
                 # Note that, for this attack we are considering the dual code,
-                # and hence k<r. 
+                # and hence k<r.
                 _r = (n0 - 1) * prime
                 _t = n0 * v
                 add_to_dict(values, _n, _r, _t, msg)
@@ -130,7 +130,6 @@ def main():
                     _r = prime
                     _t = 2 * v
                     add_to_dict(values, _n, _r, _t, msg)
-
 
         # Message recovery, i.e., Syndrome Decoding Problem (SDP)
         # the +3 skip is just to sweep the range faster

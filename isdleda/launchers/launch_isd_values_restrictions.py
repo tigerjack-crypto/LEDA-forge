@@ -256,7 +256,9 @@ def param(
                 complexities['MRA'] = (caes, qaes)
                 min_complexity_c, min_complexity_q = caes, qaes
 
-                vmin = t // 4
+                # Due to minimum distance constraints, it has to hold that n0 v
+                # > 2 t. Hence, v > 2t/n0
+                vmin = int(2 * t / n0)
                 # vmin should be odd
                 if vmin % 2 == 0:
                     vmin += 1
