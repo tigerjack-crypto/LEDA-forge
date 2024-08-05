@@ -24,6 +24,9 @@ OUT_FILES_CEB_FMT: str = join(OUT_FILES_CEB_DIR, OUT_FILES_C_PART_FMT)
 OUT_FILES_CLEDA_TYPE_DIR: str = join(".", "out", "cisd_leda", "{out_type}")
 OUT_FILES_CLEDA_FMT: str = join(OUT_FILES_CLEDA_TYPE_DIR, OUT_FILES_C_PART_FMT)
 
+# LEDA parameters
+OUT_FILES_LEDA_PARAMS: str = join(".", "out", "values", "from_restrictions", "leda_values.json")
+
 # PRIMES_PATH = "isdleda/assets/proper_primes.csv"
 PRIMES_FILE_CSV = join("assets", "proper_primes.csv")
 
