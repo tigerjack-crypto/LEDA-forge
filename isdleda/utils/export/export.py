@@ -49,7 +49,7 @@ def save_to_txt(filename: str, obj: Any):
         print(obj, file=fp)
 
 
-def save_to_json(filename: str, obj: Any):
+def save_to_json(filename: str, obj: Any, cls=None):
     fn = filename + ".json" if not Path(
         filename).suffix == ".json" else filename
     try:
@@ -59,6 +59,7 @@ def save_to_json(filename: str, obj: Any):
                 fp,
                 indent=4,
                 ensure_ascii=False,
+                cls=cls,
             )
     except FileNotFoundError:
         os.makedirs(filename[:filename.rfind(os.path.sep)], exist_ok=True)
