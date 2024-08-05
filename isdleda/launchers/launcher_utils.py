@@ -1,10 +1,12 @@
 import argparse
 import logging
 import os
+import csv
 from enum import IntEnum
-from typing import Optional
+from typing import Optional, List
 
-
+# Official levels
+LEVELS = (128, 192, 256)
 # Official NIST values
 AES_LAMBDAS = (143, 207, 272)
 # Best values obtained for Jan+22 Ph.D. Thesis, table 6.5 (Jan+22).
@@ -60,3 +62,14 @@ def init_logger(logger, out_file: str, log_level: Optional[str] = None):
     handler.setFormatter(formatter)
     logger.addHandler(handler)
     logger.setLevel(logging_level)
+
+
+def get_proper_leda_primes() -> List[int]:
+    proper_primes = []
+    with open('./isdleda/assets/proper_primes.csv', 'r',
+              newline='') as csvfile:
+        reader = csv.reader(csvfile)
+        # actually there's just one row
+        for row in reader:
+            proper_primes = list(map(int, row))
+    return proper_primes
