@@ -1,5 +1,4 @@
-import json
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from enum import StrEnum, auto
 from typing import Any, Dict, List, Optional
 
@@ -19,12 +18,13 @@ class ISDValue:
     # k: int = field(init=False, compare=False)
     msgs: List[str] = field(default_factory=list, compare=False)
 
-class ISDValueEncoder(json.JSONEncoder):
 
-    def default(self, obj):
-        if isinstance(obj, ISDValue):
-            return asdict(obj)
-        return super().default(obj)
+# especially useful for json
+def dict_to_isd_value(dct):
+    if 'n' in dct and 'r' in dct and 't' in dct:
+        return ISDValue(**dct)
+    return dct
+
 
 
 @dataclass(eq=True, frozen=True, order=True)
@@ -37,25 +37,11 @@ class LEDAValue:
     msgs: List[str] = field(default_factory=list, compare=False)
 
 
-class LEDAValueEncoder(json.JSONEncoder):
-
-    def default(self, obj):
-        if isinstance(obj, LEDAValue):
-            return asdict(obj)
-        return super().default(obj)
-
-
-# especially useful for json
-def dict_to_isd_value(dct):
-    if 'n' in dct and 'r' in dct and 't' in dct:
-        return ISDValue(**dct)
-    return dct
-
-
 def dict_to_leda_value(dct):
     if 'p' in dct and 'n0' in dct and 't' in dct and 'v' in dct:
         return LEDAValue(**dct)
     return dct
+
 
 
 @dataclass(order=True)

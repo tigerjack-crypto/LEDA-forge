@@ -6,8 +6,8 @@ from typing import Dict, List, Set
 
 import numpy as np
 from isdleda.launchers.launcher_utils import LEVELS, get_proper_leda_primes
-from isdleda.utils.common import ISDValue, ISDValueEncoder, LEDAValue
-from isdleda.utils.export.export import save_to_json
+from isdleda.utils.common import ISDValue, LEDAValue
+from isdleda.utils.export.export import ISDValueEncoder, save_to_json
 
 
 class CustomEncoder(json.JSONEncoder):
