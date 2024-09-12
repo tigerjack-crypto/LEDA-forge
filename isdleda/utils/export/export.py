@@ -79,6 +79,17 @@ class LEDAValueEncoder(json.JSONEncoder):
             return asdict(obj)
         return super().default(obj)
 
+def ledavalue_decoder(data):
+    """For leda values"""
+    if isinstance(data, dict):
+        if 'p' in data and 'n0' in data and 't' in data and 'v' in data:
+            return dict_to_leda_value(data)
+        return {key: ledavalue_decoder(value) for key, value in data.items()}
+    elif isinstance(data, list):
+        return [ledavalue_decoder(item) for item in data]
+    else:
+        return data
+
 
 def save_ledavalues_to_csv(isdvalues: List[LEDAValue], csv_file: str):
     # Get the field names from the ISDValue dataclass (excluding 'k')
@@ -116,3 +127,14 @@ def save_isdvalues_to_csv(isdvalues: List[ISDValue], csv_file: str):
             row = asdict(isdvalue)
             # Serialize the 'msgs' list to a string
             writer.writerow(row)
+
+def isdvalue_decoder(data):
+    """For leda values"""
+    if isinstance(data, dict):
+        if 'n' in data and 'r' in data and 't' in data:
+            return dict_to_isd_value(data)
+        return {key: isdvalue_decoder(value) for key, value in data.items()}
+    elif isinstance(data, list):
+        return [isdvalue_decoder(item) for item in data]
+    else:
+        return data
