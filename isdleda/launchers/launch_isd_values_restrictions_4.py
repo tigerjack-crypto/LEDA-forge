@@ -1,4 +1,5 @@
 import itertools
+from json import JSONDecodeError
 import math
 import os
 from collections import defaultdict
@@ -27,6 +28,9 @@ def check_dataset(n, k, w, reduction, msg):
         return c_time, q_time
     except FileNotFoundError:
         return None, None
+    except JSONDecodeError as e:
+        print(filename)
+        raise e
 
 
 def is_above_min_complexity(c_time, q_time):
@@ -61,18 +65,20 @@ def check_level(c_time, q_time):
 
 
 def sweep():
-    leda_primes_filtered = filter(lambda x: x >= 4e3 and x <= 9e5, leda_primes)
+    leda_primes_filtered = filter(lambda x: x >= 4e3 and x <= 10e5,
+                                  leda_primes)
 
     leda_values_by_level = defaultdict(list)
     isd_values_to_compute = []
 
     n0_range = range(2, 6)
-    t_range = range(40, 300, 5)
-    v_range = range(40, 200, 4)
+    t_range = range(40, 300, 1)
+    v_range = range(40, 250, 2)
 
     for n0, prime, t, v in itertools.product(
             n0_range,
-            itertools.islice(leda_primes_filtered, 0, None, 10),
+            # itertools.islice(leda_primes_filtered, 0, None, 10),
+            leda_primes_filtered,
             t_range,
             v_range,
     ):
@@ -98,8 +104,8 @@ def sweep():
         else:
             if not is_above_min_complexity(c_time, q_time):
                 continue
-        c_times.append(c_time)
-        q_times.append(q_time)
+            c_times.append(c_time)
+            q_times.append(q_time)
 
         # KRA2 (CFP); ISD(2*p,p,2*v) / (n0*p); attacked code rate (1/2); target weight = 2v
         if n0 != 2:
@@ -118,8 +124,8 @@ def sweep():
             else:
                 if not is_above_min_complexity(c_time, q_time):
                     continue
-            c_times.append(c_time)
-            q_times.append(q_time)
+                c_times.append(c_time)
+                q_times.append(q_time)
 
         # KRA3 (CFP); ISD(n0*p,(n0-1)*p,n0*v) / p; attacked code rate 1/n0; target weight = n0*v
         n = prime * n0
@@ -136,8 +142,8 @@ def sweep():
         else:
             if not is_above_min_complexity(c_time, q_time):
                 continue
-        c_times.append(c_time)
-        q_times.append(q_time)
+            c_times.append(c_time)
+            q_times.append(q_time)
 
         # MRA
         n = prime * n0
@@ -155,8 +161,8 @@ def sweep():
         else:
             if not is_above_min_complexity(c_time, q_time):
                 continue
-        c_times.append(c_time)
-        q_times.append(q_time)
+            c_times.append(c_time)
+            q_times.append(q_time)
 
         if has_nones:
             continue
@@ -164,7 +170,7 @@ def sweep():
         # compute minimum complexity
         c_time_min = min(c_times)
         q_time_min = min(q_times)
-        levels, bounds = check_level(c_time, q_time)
+        levels, bounds = check_level(c_time_min, q_time_min)
 
         # if it reaches this point, the leda value is a good candidate for one or more levels
         leda_val = LEDAValue(prime,
@@ -173,12 +179,14 @@ def sweep():
                              v,
                              None,
                              msgs=[
-                                 f"bounds [{bounds}]", f"C: {c_time_min}",
-                                 f"Q: {q_time_min}"
+                                 f"levels {levels}",
+                                 f"bounds {bounds}",
+                                 f"C: {c_time_min}",
+                                 f"Q: {q_time_min}",
                              ])
         for level in levels:
             leda_values_by_level[level].append(leda_val)
-    return leda_values_by_level, set(isd_values_to_compute)
+    return leda_values_by_level, list(set(isd_values_to_compute))
 
 
 def main():
