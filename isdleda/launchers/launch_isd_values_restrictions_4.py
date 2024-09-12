@@ -64,11 +64,11 @@ def sweep():
     leda_primes_filtered = filter(lambda x: x >= 4e3 and x <= 9e5, leda_primes)
 
     leda_values_by_level = defaultdict(list)
-    leda_values_to_compute = []
+    isd_values_to_compute = []
 
     n0_range = range(2, 6)
     t_range = range(40, 300, 5)
-    v_range = range(40, 200, 2)
+    v_range = range(40, 200, 4)
 
     for n0, prime, t, v in itertools.product(
             n0_range,
@@ -93,7 +93,7 @@ def sweep():
                                        np.log2(n0 - 1) - 1,
                                        msg=f"KRA1, {prime} {n0} {v}")
         if c_time is None or q_time is None:
-            leda_values_to_compute.append(ISDValue(n, n - k, w))
+            isd_values_to_compute.append(ISDValue(n, n - k, w))
             has_nones = True
         else:
             if not is_above_min_complexity(c_time, q_time):
@@ -113,7 +113,7 @@ def sweep():
                                            np.log2(n0),
                                            msg=f"KRA2, {prime} {n0} {v}")
             if c_time is None or q_time is None:
-                leda_values_to_compute.append(ISDValue(n, n - k, w))
+                isd_values_to_compute.append(ISDValue(n, n - k, w))
                 has_nones = True
             else:
                 if not is_above_min_complexity(c_time, q_time):
@@ -131,10 +131,10 @@ def sweep():
                                        reduction=np.log2(prime),
                                        msg=f"KRA3, {prime} {n0} {v}")
         if c_time is None or q_time is None:
-            leda_values_to_compute.append(ISDValue(n, n - k, w))
+            isd_values_to_compute.append(ISDValue(n, n - k, w))
             has_nones = True
         else:
-            if is_above_min_complexity(c_time, q_time):
+            if not is_above_min_complexity(c_time, q_time):
                 continue
         c_times.append(c_time)
         q_times.append(q_time)
@@ -150,7 +150,7 @@ def sweep():
                                        msg=f"MRA, {prime} {n0} {v}")
 
         if c_time is None or q_time is None:
-            leda_values_to_compute.append(ISDValue(n, n - k, w))
+            isd_values_to_compute.append(ISDValue(n, n - k, w))
             has_nones = True
         else:
             if not is_above_min_complexity(c_time, q_time):
@@ -178,17 +178,17 @@ def sweep():
                              ])
         for level in levels:
             leda_values_by_level[level].append(leda_val)
-    return leda_values_by_level, leda_values_to_compute
+    return leda_values_by_level, set(isd_values_to_compute)
 
 
 def main():
     global leda_primes
     leda_primes = get_proper_leda_primes()
-    leda_values_by_level, leda_values_to_compute = sweep()
+    leda_values_by_level, isd_values_to_compute = sweep()
 
     filename = os.path.join("out", "values", "from_restrictions_4")
     save_to_json(os.path.join(filename, "isd_values_to_compute.json"),
-                 leda_values_to_compute,
+                 isd_values_to_compute,
                  cls=ISDValueEncoder)
 
     for level, leda_values in leda_values_by_level.items():
