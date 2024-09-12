@@ -23,7 +23,7 @@ class ISDValue:
 def dict_to_isd_value(dct):
     if 'n' in dct and 'r' in dct and 't' in dct:
         return ISDValue(**dct)
-    return dct
+    raise Exception("Wrong dictionary for ISDValue")
 
 
 
@@ -40,7 +40,7 @@ class LEDAValue:
 def dict_to_leda_value(dct):
     if 'p' in dct and 'n0' in dct and 't' in dct and 'v' in dct:
         return LEDAValue(**dct)
-    return dct
+    raise Exception("Wrong dictionary for LEDAValue")
 
 
 
