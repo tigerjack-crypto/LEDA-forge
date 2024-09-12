@@ -6,7 +6,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any, List
 
-from isdleda.utils.common import ISDValue, LEDAValue
+from isdleda.utils.common import ISDValue, LEDAValue, dict_to_isd_value, dict_to_leda_value
 
 
 def save_to_pickle(filename: str, obj: Any):
@@ -32,17 +32,17 @@ def load_from_pickle(filename: str) -> Any:
             return pickle.load(fp)
 
 
-def load_from_json(filename: str) -> Any:
+def load_from_json(filename: str, **kwargs) -> Any:
     try:
         with open(filename, "r") as fp:
-            return json.load(fp)
+            return json.load(fp, **kwargs)
     except FileNotFoundError as e:
         fn = filename + ".json" if not Path(
             filename).suffix == ".json" else filename
         if fn == filename:
             raise e
         with open(fn, "r") as fp:
-            return json.load(fp)
+            return json.load(fp, **kwargs)
 
 
 def save_to_txt(filename: str, obj: Any):
