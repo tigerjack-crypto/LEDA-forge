@@ -28,9 +28,9 @@ def check_dataset(n, k, w, reduction, msg):
         return c_time, q_time
     except FileNotFoundError:
         return None, None
-    except JSONDecodeError as e:
-        print(filename)
-        raise e
+    except JSONDecodeError:
+        print(f"JSON decode error {filename}")
+        return None, None
 
 
 def is_above_min_complexity(c_time, q_time):
@@ -69,21 +69,41 @@ def sweep():
                                   leda_primes)
 
     leda_values_by_level = defaultdict(list)
+    leda_values_not_reaching_minimum = []
     isd_values_to_compute = []
 
     n0_range = range(2, 6)
-    t_range = range(40, 300, 1)
-    v_range = range(40, 250, 2)
+    t_range = range(40, 300, 4)
+    v_range = range(40, 250, 4)
+
+    it = 0
+    # no. of items reaching the final stages
+    procesd = 0
+    # skipd bcz of hardcoded high n
+    skipd = 0
+    # incomplete values in dataset
+    incompletes = 0
+    # not reaching minimum
+    not_min = 0
 
     for n0, prime, t, v in itertools.product(
             n0_range,
-            # itertools.islice(leda_primes_filtered, 0, None, 10),
-            leda_primes_filtered,
+            itertools.islice(leda_primes_filtered, 0, None, 3),
+            # leda_primes_filtered,
             t_range,
             v_range,
     ):
+        it+=1
+        if it % 100 == 0:
+            print(f"Iteration {it:10}, processed {procesd:10}, skipped {skipd:10}, incompletes {incompletes:10}, not min = {not_min:10}", end="\r")
+        # append to list is more efficient than set add; at the same time,
+        # there will be a huge amount of duplicates that we must address to
+        # avoid memory explosion.
+        if it % 10000 == 0 and len(isd_values_to_compute) > 10000:
+            isd_values_to_compute = list(set(isd_values_to_compute))
         n = n0 * prime
         if n >= 3e6:
+            skipd += 1
             continue
         c_times = []
         q_times = []
@@ -103,6 +123,8 @@ def sweep():
             has_nones = True
         else:
             if not is_above_min_complexity(c_time, q_time):
+                not_min += 1
+                leda_values_not_reaching_minimum.append(LEDAValue(prime, n0, t, v))
                 continue
             c_times.append(c_time)
             q_times.append(q_time)
@@ -123,6 +145,8 @@ def sweep():
                 has_nones = True
             else:
                 if not is_above_min_complexity(c_time, q_time):
+                    not_min += 1
+                    leda_values_not_reaching_minimum.append(LEDAValue(prime, n0, t, v))
                     continue
                 c_times.append(c_time)
                 q_times.append(q_time)
@@ -141,6 +165,8 @@ def sweep():
             has_nones = True
         else:
             if not is_above_min_complexity(c_time, q_time):
+                not_min += 1
+                leda_values_not_reaching_minimum.append(LEDAValue(prime, n0, t, v))
                 continue
             c_times.append(c_time)
             q_times.append(q_time)
@@ -160,14 +186,18 @@ def sweep():
             has_nones = True
         else:
             if not is_above_min_complexity(c_time, q_time):
+                not_min += 1
+                leda_values_not_reaching_minimum.append(LEDAValue(prime, n0, t, v))
                 continue
             c_times.append(c_time)
             q_times.append(q_time)
 
         if has_nones:
+            incompletes += 1
             continue
 
         # compute minimum complexity
+        procesd += 1
         c_time_min = min(c_times)
         q_time_min = min(q_times)
         levels, bounds = check_level(c_time_min, q_time_min)
@@ -186,18 +216,22 @@ def sweep():
                              ])
         for level in levels:
             leda_values_by_level[level].append(leda_val)
-    return leda_values_by_level, list(set(isd_values_to_compute))
+    return leda_values_by_level, list(set(isd_values_to_compute)), list(set(leda_values_not_reaching_minimum))
 
 
 def main():
     global leda_primes
     leda_primes = get_proper_leda_primes()
-    leda_values_by_level, isd_values_to_compute = sweep()
+    leda_values_by_level, isd_values_to_compute, leda_values_not_reaching_min = sweep()
 
     filename = os.path.join("out", "values", "from_restrictions_4")
     save_to_json(os.path.join(filename, "isd_values_to_compute.json"),
                  isd_values_to_compute,
                  cls=ISDValueEncoder)
+
+    save_to_json(os.path.join(filename, "isd_values_to_compute.json"),
+                 leda_values_not_reaching_min,
+                 cls=LEDAValueEncoder)
 
     for level, leda_values in leda_values_by_level.items():
         save_to_json(os.path.join(filename, f"leda_values_{level}.json"),
