@@ -1,3 +1,7 @@
+"""Exhaustive, parallel search through all the LEDA values in dataset for the ones being
+in the security level region. It seems to be less efficient than a sequential search.
+
+"""
 import itertools
 import math
 import os
@@ -168,7 +172,7 @@ def sweep():
         leda_values_by_level[level] = []
 
     # Use a Pool to parallelize processing
-    with Pool(cpu_count() - 1, maxtasksperchild=500) as pool:
+    with Pool(cpu_count() - 1, maxtasksperchild=50) as pool:
         result_iterator = pool.imap_unordered(
             _process_combination,
             itertools.product(
