@@ -1,4 +1,10 @@
+"""Exhaustive, sequential search through all the LEDA values in dataset for the ones being
+in the security level region. It additionally generates the ISD values missing from
+the dataset.
+
+"""
 import itertools
+import time
 from json import JSONDecodeError
 import math
 import os
@@ -9,7 +15,8 @@ from isdleda.launchers.launcher_utils import (AES_LAMBDAS, QAES_LAMBDAS,
                                               get_proper_leda_primes)
 from isdleda.utils.common import ISDValue, LEDAValue
 from isdleda.utils.export.export import (ISDValueEncoder, LEDAValueEncoder,
-                                         load_from_json, save_to_json)
+                                         ledavalue_decoder, load_from_json,
+                                         save_to_json)
 
 
 def check_dataset(n, k, w, reduction, msg):
@@ -64,45 +71,53 @@ def check_level(c_time, q_time):
     return levels, bounds
 
 
-def sweep():
-    leda_primes_filtered = filter(lambda x: x >= 4e3 and x <= 10e5,
-                                  leda_primes)
-
+def sweep(leda_values_not_reaching_minimum=[]):
+    leda_values_not_reaching_minimum_set = set(
+        leda_values_not_reaching_minimum)
     leda_values_by_level = defaultdict(list)
-    leda_values_not_reaching_minimum = []
     isd_values_to_compute = []
 
+    leda_primes_filtered = filter(lambda x: x >= 4e3 and x <= 1e5, leda_primes)
+    leda_primes_filtered = itertools.islice(leda_primes_filtered, 0, None, 100)
     n0_range = range(2, 6)
-    t_range = range(40, 300, 4)
-    v_range = range(40, 250, 4)
+    t_range = range(40, 350, 30)
+    v_range = range(40, 350, 20)
 
     it = 0
-    # no. of items reaching the final stages
+    # no. of items reaching the final stages; maybe they still don't belong to
+    # any level though
     procesd = 0
     # skipd bcz of hardcoded high n
     skipd = 0
-    # incomplete values in dataset
+    # incomplete values in dataset, meaning not present
     incompletes = 0
     # not reaching minimum
     not_min = 0
 
     for n0, prime, t, v in itertools.product(
             n0_range,
-            itertools.islice(leda_primes_filtered, 0, None, 3),
-            # leda_primes_filtered,
+            leda_primes_filtered,
             t_range,
             v_range,
     ):
-        it+=1
+        it += 1
         if it % 100 == 0:
-            print(f"Iteration {it:10}, processed {procesd:10}, skipped {skipd:10}, incompletes {incompletes:10}, not min = {not_min:10}", end="\r")
+            print(
+                f"Iteration {it:10}, processed {procesd:10}, skipped {skipd:10}, incompletes {incompletes:10}, not min = {not_min:10}",
+                end="\r")
+
+        leda_val_potential = LEDAValue(prime, n0, t, v)
+        if leda_val_potential in leda_values_not_reaching_minimum_set:
+            skipd += 1
+            continue
+        isd_values_to_compute_maybe = []
         # append to list is more efficient than set add; at the same time,
         # there will be a huge amount of duplicates that we must address to
         # avoid memory explosion.
         if it % 10000 == 0 and len(isd_values_to_compute) > 10000:
             isd_values_to_compute = list(set(isd_values_to_compute))
         n = n0 * prime
-        if n >= 3e6:
+        if n >= 3e5:
             skipd += 1
             continue
         c_times = []
@@ -119,12 +134,13 @@ def sweep():
                                        np.log2(n0 - 1) - 1,
                                        msg=f"KRA1, {prime} {n0} {v}")
         if c_time is None or q_time is None:
-            isd_values_to_compute.append(ISDValue(n, n - k, w))
+            isd_values_to_compute_maybe.append(ISDValue(n, n - k, w))
             has_nones = True
         else:
             if not is_above_min_complexity(c_time, q_time):
                 not_min += 1
-                leda_values_not_reaching_minimum.append(LEDAValue(prime, n0, t, v))
+                leda_val_potential.msgs.append('Not Min: KRA1')
+                leda_values_not_reaching_minimum.append(leda_val_potential)
                 continue
             c_times.append(c_time)
             q_times.append(q_time)
@@ -141,12 +157,13 @@ def sweep():
                                            np.log2(n0),
                                            msg=f"KRA2, {prime} {n0} {v}")
             if c_time is None or q_time is None:
-                isd_values_to_compute.append(ISDValue(n, n - k, w))
+                isd_values_to_compute_maybe.append(ISDValue(n, n - k, w))
                 has_nones = True
             else:
                 if not is_above_min_complexity(c_time, q_time):
                     not_min += 1
-                    leda_values_not_reaching_minimum.append(LEDAValue(prime, n0, t, v))
+                    leda_val_potential.msgs.append('Not Min: KRA2')
+                    leda_values_not_reaching_minimum.append(leda_val_potential)
                     continue
                 c_times.append(c_time)
                 q_times.append(q_time)
@@ -161,12 +178,13 @@ def sweep():
                                        reduction=np.log2(prime),
                                        msg=f"KRA3, {prime} {n0} {v}")
         if c_time is None or q_time is None:
-            isd_values_to_compute.append(ISDValue(n, n - k, w))
+            isd_values_to_compute_maybe.append(ISDValue(n, n - k, w))
             has_nones = True
         else:
             if not is_above_min_complexity(c_time, q_time):
                 not_min += 1
-                leda_values_not_reaching_minimum.append(LEDAValue(prime, n0, t, v))
+                leda_val_potential.msgs.append('Not Min: KRA3')
+                leda_values_not_reaching_minimum.append(leda_val_potential)
                 continue
             c_times.append(c_time)
             q_times.append(q_time)
@@ -182,12 +200,13 @@ def sweep():
                                        msg=f"MRA, {prime} {n0} {v}")
 
         if c_time is None or q_time is None:
-            isd_values_to_compute.append(ISDValue(n, n - k, w))
+            isd_values_to_compute_maybe.append(ISDValue(n, n - k, w))
             has_nones = True
         else:
             if not is_above_min_complexity(c_time, q_time):
                 not_min += 1
-                leda_values_not_reaching_minimum.append(LEDAValue(prime, n0, t, v))
+                leda_val_potential.msgs.append('Not Min: MRA')
+                leda_values_not_reaching_minimum.append(leda_val_potential)
                 continue
             c_times.append(c_time)
             q_times.append(q_time)
@@ -195,6 +214,7 @@ def sweep():
         if has_nones:
             incompletes += 1
             continue
+        isd_values_to_compute.extend(isd_values_to_compute)
 
         # compute minimum complexity
         procesd += 1
@@ -203,33 +223,58 @@ def sweep():
         levels, bounds = check_level(c_time_min, q_time_min)
 
         # if it reaches this point, the leda value is a good candidate for one or more levels
-        leda_val = LEDAValue(prime,
-                             n0,
-                             t,
-                             v,
-                             None,
-                             msgs=[
-                                 f"levels {levels}",
-                                 f"bounds {bounds}",
-                                 f"C: {c_time_min}",
-                                 f"Q: {q_time_min}",
-                             ])
+        leda_val_potential.msgs.extend([
+            f"levels {levels}",
+            f"bounds {bounds}",
+            f"C: {c_time_min}",
+            f"Q: {q_time_min}",
+        ])
         for level in levels:
-            leda_values_by_level[level].append(leda_val)
-    return leda_values_by_level, list(set(isd_values_to_compute)), list(set(leda_values_not_reaching_minimum))
+            leda_values_by_level[level].append(leda_val_potential)
+
+    print(
+        f"Iteration {it:10}, processed {procesd:10}, skipped {skipd:10}, incompletes {incompletes:10}, not min = {not_min:10}",
+        end="\r")
+    isd_values_to_compute = list(set(isd_values_to_compute))
+    leda_values_not_reaching_minimum = list(
+        set(leda_values_not_reaching_minimum))
+    print(f"ISD values to compute: {len(isd_values_to_compute)}")
+    print(
+        f"LEDA values not reaching min: {len(leda_values_not_reaching_minimum)}"
+    )
+    return leda_values_by_level, isd_values_to_compute
 
 
 def main():
+    filename = os.path.join("out", "values", "from_restrictions_4")
+
     global leda_primes
     leda_primes = get_proper_leda_primes()
-    leda_values_by_level, isd_values_to_compute, leda_values_not_reaching_min = sweep()
 
-    filename = os.path.join("out", "values", "from_restrictions_4")
+    # should take more to load, but potentially should speed-up the computation
+    # by skipping computation for useless LEDA values that we already know
+    # don't reach the minimum.
+    filename_min = os.path.join(filename, 'leda_values_not_reaching_min.json')
+    if os.path.isfile(filename_min):
+
+        print(f"Loading to skip values from {filename_min}")
+        leda_values_not_reaching_min = load_from_json(
+            filename_min, object_hook=ledavalue_decoder)
+        # print(type(leda_values_not_reaching_min))
+        # print(type(next(leda_values_not_reaching_min)))
+        # print(type(leda_values_not_reaching_min[0]))
+        print(f"Loaded {len(leda_values_not_reaching_min)} values")
+    else:
+        leda_values_not_reaching_min = []
+
+    leda_values_by_level, isd_values_to_compute = sweep()
+    leda_values_not_reaching_min = list(set(leda_values_not_reaching_min))
+
     save_to_json(os.path.join(filename, "isd_values_to_compute.json"),
                  isd_values_to_compute,
                  cls=ISDValueEncoder)
 
-    save_to_json(os.path.join(filename, "isd_values_to_compute.json"),
+    save_to_json(os.path.join(filename, "leda_values_not_reaching_min.json"),
                  leda_values_not_reaching_min,
                  cls=LEDAValueEncoder)
 
@@ -277,4 +322,6 @@ def main():
 
 
 if __name__ == '__main__':
+    start_time = time.time()
     main()
+    print(time.time() - start_time, " seconds")
