@@ -1,4 +1,4 @@
-"""Launch the classical ISD estimator from TII
+"""Launch the classical ISD estimator (CE for short) from TII
 """
 import argparse
 import collections
