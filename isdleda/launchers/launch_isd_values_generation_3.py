@@ -1,3 +1,6 @@
+"""Exhaustive search over all parameters.
+The Torres, Sendrier approximation did not work so good.
+"""
 import json
 import os
 from collections import defaultdict
@@ -33,12 +36,12 @@ def main():
 
     for level_idx, c_lambda in enumerate(LEVELS):
         # for c_lambda in LEVELS:
-        for prime in filter(lambda p: 5e3 < p < 1e5, leda_primes):
+        for prime in filter(lambda p: 5e3 < p < 9e4, leda_primes):
             for n0 in range(2, 6):
                 # MRA, KRA1, 2, 3
 
                 n = prime * n0
-                if n > 2.5e5:
+                if n > 2e5:
                     continue
                 # MRA, KRA1, KRA2, KRA3
                 r = prime

@@ -78,10 +78,10 @@ def sweep(leda_values_not_reaching_minimum=[]):
     isd_values_to_compute = []
 
     leda_primes_filtered = filter(lambda x: x >= 4e3 and x <= 1e5, leda_primes)
-    leda_primes_filtered = itertools.islice(leda_primes_filtered, 0, None, 100)
+    # leda_primes_filtered = itertools.islice(leda_primes_filtered, 0, None, 1)
     n0_range = range(2, 6)
-    t_range = range(40, 350, 30)
-    v_range = range(40, 350, 20)
+    t_range = range(30, 351, 1)
+    v_range = range(30, 351, 2)
 
     it = 0
     # no. of items reaching the final stages; maybe they still don't belong to
@@ -110,16 +110,18 @@ def sweep(leda_values_not_reaching_minimum=[]):
         if leda_val_potential in leda_values_not_reaching_minimum_set:
             skipd += 1
             continue
-        isd_values_to_compute_maybe = []
-        # append to list is more efficient than set add; at the same time,
-        # there will be a huge amount of duplicates that we must address to
-        # avoid memory explosion.
-        if it % 10000 == 0 and len(isd_values_to_compute) > 10000:
-            isd_values_to_compute = list(set(isd_values_to_compute))
         n = n0 * prime
         if n >= 3e5:
             skipd += 1
             continue
+        if n0 * v < t:
+            # in this case, the code has a distance which is less than the error weight
+            skipd += 1
+            continue
+
+        # maybe bcz if there is at least one isd value for this leda value that
+        # doesn't reach the minimum, it's useless to compute the others
+        isd_values_to_compute_maybe = []
         c_times = []
         q_times = []
         has_nones = False
@@ -260,14 +262,11 @@ def main():
         print(f"Loading to skip values from {filename_min}")
         leda_values_not_reaching_min = load_from_json(
             filename_min, object_hook=ledavalue_decoder)
-        # print(type(leda_values_not_reaching_min))
-        # print(type(next(leda_values_not_reaching_min)))
-        # print(type(leda_values_not_reaching_min[0]))
         print(f"Loaded {len(leda_values_not_reaching_min)} values")
     else:
         leda_values_not_reaching_min = []
 
-    leda_values_by_level, isd_values_to_compute = sweep()
+    leda_values_by_level, isd_values_to_compute = sweep(leda_values_not_reaching_min)
     leda_values_not_reaching_min = list(set(leda_values_not_reaching_min))
 
     save_to_json(os.path.join(filename, "isd_values_to_compute.json"),

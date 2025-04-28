@@ -21,7 +21,8 @@ from isdleda.launchers.launcher_utils import (MemAccess,
 from isdleda.utils.common import ISDValue, dict_to_isd_value
 from isdleda.utils.export.export import (load_from_json, save_to_json,
                                          save_to_pickle)
-from isdleda.utils.paths import (ISD_VALUES_FILE_JSON, OUT_FILES_CEB_FMT,
+# ISD_VALUES_FILE_JSON, 
+from isdleda.utils.paths import (OUT_FILES_CEB_FMT,
                                  OUT_FILES_CEB_TYPE_DIR)
 
 LOGGER = logging.getLogger(__name__)
@@ -47,6 +48,8 @@ def parse_arguments():
                         action="store_true",
                         help="Skip quantum complexity files if existing")
     parser.add_argument("--out-format", choices=["pkl", "json"], default="pkl")
+    parser.add_argument("--input",
+                        help="Input file name containing the isd values")
     return parser
 
 
@@ -164,7 +167,7 @@ def main(raw_args: Optional[list[str]] = None):
     LOGGER.info(f"Starting data filtering at {t0}")
 
     isd_values: Sequence[ISDValue] = [
-        dict_to_isd_value(x) for x in load_from_json(ISD_VALUES_FILE_JSON)
+        dict_to_isd_value(x) for x in load_from_json(namespace.input)
     ]
 
     tot = len(isd_values) * len(MemAccess)
