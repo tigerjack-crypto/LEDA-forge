@@ -30,7 +30,7 @@ def process():
     isd_values_ok: Set[ISDValue] = set()
     isd_values_to_compute: Set[ISDValue] = set()
     for level_idx, level in enumerate((1, 3, 5)):
-        filename = f"/mnt/data/simone/vc/crypto/leda_design/stime_ISD/post_dfr_in/{ITERATION}/cat_{level}_region"
+        filename = f"{OUT_DIR}/post_dfr_in/{ITERATION}/cat_{level}_region"
         leda_values = from_csv_to_ledavalue(f"{filename}.csv")
 
         c_lambda = AES_LAMBDAS[int(level_idx)]
