@@ -13,10 +13,6 @@ for level in (1, 3, 5):
     ledavalues = from_csv_to_ledavalue(f"{filename}.csv")
 
     for leda_val in ledavalues:
-        c_complexities = [leda_val.p * leda_val.n0] * 4
-        q_complexities = [leda_val.p * leda_val.n0] * 4
-        isd_vals_maybe_ok = []
-
         # MRA
         n = leda_val.p * leda_val.n0
         k = leda_val.p * (leda_val.n0 - 1)
