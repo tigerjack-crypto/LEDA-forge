@@ -1,0 +1,48 @@
+# Other
+- submodules/
+- out/
+
+# Exclude log and temp
+- *.log
+- tmp/
+- temp/
+
+# Exclude Python bytecode and cache
+- __pycache__/
+- *.pyc
+- *.pyo
+- *.pyd
+
+# Exclude virtual environments
+- venv/
+- .venv/
+
+# Exclude version control directories
+- .git/
+
+# Exclude build artifacts
+- build/
+- dist/
+- *.egg-info/
+
+# Exclude Python packaging artifacts
+- *.egg
+- *.whl
+
+# Exclude editor/IDE files
+- .vscode/
+- .idea/
+- *.swp
+- *.swo
+- *~
+- *~
+- \#*\#
+
+# Exclude test output
+- .pytest_cache/
+- .mypy_cache/
+- .coverage
+- htmlcov/
+
+# Exclude notebooks checkpoints
+- .ipynb_checkpoints/
