@@ -48,7 +48,7 @@ def main():
                 k = n - r
                 c = -np.log2(1 - k / n)
                 c_lambda_expected = c_lambda - 3 * np.log2(r)
-                tmin = int(np.floor(.8 * c_lambda_expected / c))
+                tmin = int(np.floor(.6 * c_lambda_expected / c))
                 tmax = int(np.ceil(1.2 * c_lambda_expected / c))
 
                 for t in range(tmin, tmax, 1):
