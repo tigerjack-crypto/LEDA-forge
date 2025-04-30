@@ -13,7 +13,8 @@ from isdleda.utils.export.export import (ISDValueEncoder, LEDAValueEncoder,
                                          save_to_json)
 
 # the 0-th time this is launched
-ITERATION = "1_BJMM"
+ITERATION_IN = "0"
+ITERATION_OUT = "1_BJMM"
 
 DATA_SET = os.path.join(OUT_DIR, "LT", "results", "json")
 isd_values_to_compute: Set[ISDValue] = set()
@@ -30,7 +31,7 @@ def process():
     isd_values_ok: Set[ISDValue] = set()
     isd_values_to_compute: Set[ISDValue] = set()
     for level_idx, level in enumerate((1, 3, 5)):
-        filename = f"{OUT_DIR}/post_dfr_in/{ITERATION}/cat_{level}_region"
+        filename = f"{OUT_DIR}/post_dfr_in/{ITERATION_IN}/cat_{level}_region"
         leda_values = from_csv_to_ledavalue(f"{filename}.csv")
 
         c_lambda = AES_LAMBDAS[int(level_idx)]
@@ -198,7 +199,7 @@ def main():
     print(f"Passings each step {passing_at_step}")
 
     filename = os.path.join(OUT_DIR, "isd-leda", "values", "from_restrictions",
-                            f"{ITERATION}"
+                            f"{ITERATION_OUT}"
                             "leda_values_")
     print(f"Saving leda vals ok")
     for level, item in zip((1, 3, 5), leda_vals_ok.items()):
@@ -209,14 +210,14 @@ def main():
 
     print(f"Saving isd vals ok {len(isd_values_ok)}")
     filename = os.path.join(OUT_DIR, "isd-leda", "values", "from_restrictions",
-                            f"{ITERATION}"
+                            f"{ITERATION_OUT}"
                             "isd_values.json")
     isd_vals = sorted(isd_values_ok)
     save_to_json(filename, isd_vals, cls=ISDValueEncoder)
 
     print(f"Saving isd vals to compute {len(isd_values_to_compute)}")
     filename = os.path.join(OUT_DIR, "isd-leda", "values", "from_restrictions",
-                            f"{ITERATION}"
+                            f"{ITERATION_OUT}"
                             "isd_values_to_compute.json")
     isd_vals = sorted(set(isd_values_to_compute))
     save_to_json(filename, isd_vals, cls=ISDValueEncoder)
