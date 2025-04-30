@@ -1,16 +1,17 @@
 """It's just the restriction routine, but tailored for the new data format.
 It should be merged with the restriction one.
 """
+import csv
 import os
-from collections import defaultdict
-from typing import Dict, List, Set
+from typing import Set
 
 import numpy as np
 from isdleda.launchers.launcher_utils import AES_LAMBDAS, OUT_DIR, QAES_LAMBDAS
-from isdleda.utils.common import ISDValue, LEDAValue
-from isdleda.utils.export.export import (ISDValueEncoder, LEDAValueEncoder,
-                                         from_csv_to_ledavalue, load_from_json,
-                                         save_to_json)
+from isdleda.utils.common import ISDValue
+from isdleda.utils.export.export import (
+    from_csv_to_ledavalue,
+    load_from_json,
+)
 
 # the 0-th time this is launched
 ITERATION_IN = "0"
@@ -21,33 +22,41 @@ isd_values_to_compute: Set[ISDValue] = set()
 # isd_values: List[ISDValue] = []
 
 
+def write_to_csv(filename, values):
+    header = [
+        'n0', 'p', 't', 'v', 'c_mra', 'q_mra', 'c_kra1', 'q_kra1', 'c_kra2',
+        'q_kra2', 'c_kra3', 'q_kra3', 'c_best', 'q_best'
+    ]
+    with open(f"{filename}.csv", 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(header)
+        writer.writerows(values)
+
 
 def process():
-    # set is useless here, the merged list doesn't have duplicates
-    leda_values_ok: Dict[int, List[LEDAValue]] = defaultdict(list)
-    # how many values passed the different level (MRA, KRA1, KRA2, KRA3) and the final check
-    passing = [0, 0, 0, 0, 0]
-
-    isd_values_ok: Set[ISDValue] = set()
-    isd_values_to_compute: Set[ISDValue] = set()
     for level_idx, level in enumerate((1, 3, 5)):
-        filename = f"{OUT_DIR}/post_dfr_in/{ITERATION_IN}/cat_{level}_region"
-        leda_values = from_csv_to_ledavalue(f"{filename}.csv")
-
+        filename_in = f"{OUT_DIR}/post_dfr_in/{ITERATION_IN}/cat_{level}_region"
+        leda_values = from_csv_to_ledavalue(f"{filename_in}.csv")
         c_lambda = AES_LAMBDAS[int(level_idx)]
         q_lambda = QAES_LAMBDAS[int(level_idx)]
+        filename_out = f"{OUT_DIR}/post_dfr_in/{ITERATION_IN}/cat_{level}_attacks"
+        csv_values = []
 
         for leda_val in leda_values:
-            print(f"{passing}", end="\r")
-            c_complexities = [leda_val.p * leda_val.n0] * 4
-            q_complexities = [leda_val.p * leda_val.n0] * 4
-            isd_vals_maybe_ok = []
+            c_values = []
+            q_values = []
+
+            csv_value = []
+            csv_value.append(leda_val.n0)
+            csv_value.append(leda_val.p)
+            csv_value.append(leda_val.v)
+            csv_value.append(leda_val.t)
 
             # MRA
             n = leda_val.p * leda_val.n0
             k = leda_val.p * (leda_val.n0 - 1)
             t = leda_val.t
-            c_aes, q_aes, less_than_threshold = check_dataset(
+            c_aes, q_aes, _ = check_dataset(
                 n=n,
                 k=k,
                 t=t,
@@ -55,23 +64,18 @@ def process():
                 q_lambda=q_lambda,
                 reduction=np.log2(leda_val.p) / 2,
                 msg=f"MRA, {leda_val.p} {leda_val.n0} {leda_val.v}")
-            if (c_aes is None or q_aes is None):
-                isd_values_to_compute.add(ISDValue(n, n - k, t))
-                continue
-            if less_than_threshold:
-                continue
-
-            passing[0] += 1
-            c_complexities[0] = c_aes
-            q_complexities[0] = q_aes
-            isd_vals_maybe_ok.append(ISDValue(n, n - k, t))
+            assert c_aes is not None and q_aes is not None
+            c_values.append(c_aes)
+            q_values.append(q_aes)
+            csv_value.append(c_aes)
+            csv_value.append(q_aes)
             del n, k, t
 
             # KRA 1
             n = leda_val.p * leda_val.n0  #
             k = leda_val.p * (leda_val.n0 - 1)  #
             t = leda_val.v * 2
-            c_aes, q_aes, less_than_threshold = check_dataset(
+            c_aes, q_aes, _ = check_dataset(
                 n=n,
                 k=k,
                 t=t,
@@ -80,15 +84,11 @@ def process():
                 reduction=np.log2(leda_val.p) + np.log2(leda_val.n0) +
                 np.log2(leda_val.n0 - 1) - 1,
                 msg=f"KRA1, {leda_val.p} {leda_val.n0} {leda_val.v}")
-            if (c_aes is None or q_aes is None):
-                isd_values_to_compute.add(ISDValue(n, n - k, t))
-                continue
-            if less_than_threshold:
-                continue
-            passing[1] += 1
-            c_complexities[1] = c_aes
-            q_complexities[1] = q_aes
-            isd_vals_maybe_ok.append(ISDValue(n, n - k, t))
+            assert c_aes is not None and q_aes is not None
+            c_values.append(c_aes)
+            q_values.append(q_aes)
+            csv_value.append(c_aes)
+            csv_value.append(q_aes)
             del n, k, t
 
             # KRA 2
@@ -96,7 +96,7 @@ def process():
                 n = 2 * leda_val.p
                 k = leda_val.p
                 t = leda_val.v * 2
-                c_aes, q_aes, less_than_threshold = check_dataset(
+                c_aes, q_aes, _ = check_dataset(
                     n=n,
                     k=k,
                     t=t,
@@ -104,22 +104,21 @@ def process():
                     q_lambda=q_lambda,
                     reduction=np.log2(leda_val.p) + np.log2(leda_val.n0),
                     msg=f"KRA2, {leda_val.p} {leda_val.n0} {leda_val.v}")
-                if (c_aes is None or q_aes is None):
-                    isd_values_to_compute.add(ISDValue(n, n - k, t))
-                    continue
-                if less_than_threshold:
-                    continue
-                passing[2] += 1
-                c_complexities[2] = c_aes
-                q_complexities[2] = q_aes
-                isd_vals_maybe_ok.append(ISDValue(n, n - k, t))
+                assert c_aes is not None and q_aes is not None
+                c_values.append(c_aes)
+                q_values.append(q_aes)
+                csv_value.append(c_aes)
+                csv_value.append(q_aes)
                 del n, k, t
+            else:
+                csv_value.append(np.inf)
+                csv_value.append(np.inf)
 
             # KRA 3
             n = leda_val.p * leda_val.n0
             k = leda_val.p
             t = leda_val.v * leda_val.n0
-            c_aes, q_aes, less_than_threshold = check_dataset(
+            c_aes, q_aes, _ = check_dataset(
                 n=n,
                 k=k,
                 t=t,
@@ -127,100 +126,47 @@ def process():
                 q_lambda=q_lambda,
                 reduction=np.log2(leda_val.p),
                 msg=f"KRA3, {leda_val.p} {leda_val.n0} {leda_val.v}")
-            if (c_aes is None or q_aes is None):
-                isd_values_to_compute.add(ISDValue(n, n - k, t))
-                continue
-            if less_than_threshold:
-                continue
-
-            passing[3] += 1
-            c_complexities[3] = c_aes
-            q_complexities[3] = q_aes
-            isd_vals_maybe_ok.append(ISDValue(n, n - k, t))
+            assert c_aes is not None and q_aes is not None
+            c_values.append(c_aes)
+            q_values.append(q_aes)
+            csv_value.append(c_aes)
+            csv_value.append(q_aes)
+            del n, k, t
 
             # min c, min q, min c attack, min q attack
-            min_c = np.inf
-            min_q = np.inf
-            min_c_attack = None
-            min_q_attack = None
-            for c_compl, q_compl, c_attack, q_attack in zip(
-                    c_complexities, q_complexities,
-                ("MRA", "KRA1", "KRA2", "KRA3"),
-                ("MRA", "KRA1", "KRA2", "KRA3")):
-                if c_compl < min_c:
-                    min_c = c_compl
-                    min_c_attack = c_attack
-                if q_compl < min_q:
-                    min_q = q_compl
-                    min_q_attack = q_attack
-            if is_inside(min_c, min_q, c_lambda, q_lambda):
-                passing[4] += 1
-                leda_val.msgs.extend([
-                    f"MIN C: {min_c} attack: {min_c_attack}, MIN Q:{min_q} attack: {min_q_attack}"
-                ])
+            min_c = min(c_values)
+            min_q = min(q_values)
+            csv_value.append(min_c)
+            csv_value.append(min_q)
+            csv_values.append(csv_value)
 
-    return leda_values_ok, passing, list(isd_values_ok), list(isd_values_to_compute)
+            write_to_csv(filename_out, csv_values)
 
 
 def check_dataset(n, k, t, c_lambda, q_lambda, reduction, msg):
-    filename = os.path.join(OUT_DIR, "LT", "results", "json", f"{n:06}_{k:06}_{t:03}.json")
+    filename = os.path.join(OUT_DIR, "LT", "results", "json",
+                            f"{n:06}_{k:06}_{t:03}.json")
+    print(filename)
     # continue exploring to find another minimum
     # filename = f"out/ledatools/json/{n:06}_{k:06}_{t:03}.json"
     less_than_threshold = False
-    try:
-        data = load_from_json(filename)
-        c_time = data['Classic']['Plain']['value'] - reduction
-        q_time = (data['Quantum']['Plain']['value']) * 2 - reduction
-        if c_time < 0 or q_time < 0:
-            print(f"{msg}")
-            raise Exception(
-                f"Value less than 0 for {filename}, with reduction {reduction}: {c_time}, {q_time}"
-            )
-        if c_time < .8 * c_lambda or q_time < .75 * q_lambda:
-            less_than_threshold = True
-        return c_time, q_time, less_than_threshold
-    except FileNotFoundError:
-        return None, None, True
+    data = load_from_json(filename)
 
-
-def is_inside(c_time, q_time, c_lambda, q_lambda):
-    if .8 * c_lambda <= c_time <= 1.2 * c_lambda:
-        if .75 * q_lambda <= q_time <= 1.25 * q_lambda:
-            return True
-        else:
-        #     # TODO Idea here is to detect quantum bounds
-            return False
-    return False
+    c_time = data['Classic']['Plain']['value'] - reduction
+    q_time = (data['Quantum']['Plain']['value']) * 2 - reduction
+    if c_time < 0 or q_time < 0:
+        print(f"{msg}")
+        raise Exception(
+            f"Value less than 0 for {filename}, with reduction {reduction}: {c_time}, {q_time}"
+        )
+    if c_time < .8 * c_lambda or q_time < .75 * q_lambda:
+        less_than_threshold = True
+    return c_time, q_time, less_than_threshold
 
 
 def main():
     print("Processing merged values")
-    leda_vals_ok, passing_at_step, isd_values_ok, isd_values_to_compute = process()
-    print(f"Passings each step {passing_at_step}")
-
-    filename = os.path.join(OUT_DIR, "isd-leda", "values", "from_restrictions",
-                            f"{ITERATION_OUT}"
-                            "leda_values_")
-    print(f"Saving leda vals ok")
-    for level, item in zip((1, 3, 5), leda_vals_ok.items()):
-        _, leda_vals = item
-        filename_level = filename + f"L{level}.json"
-        print(f"Saving leda vals for {level}")
-        save_to_json(filename_level, leda_vals, cls=LEDAValueEncoder)
-
-    print(f"Saving isd vals ok {len(isd_values_ok)}")
-    filename = os.path.join(OUT_DIR, "isd-leda", "values", "from_restrictions",
-                            f"{ITERATION_OUT}"
-                            "isd_values.json")
-    isd_vals = sorted(isd_values_ok)
-    save_to_json(filename, isd_vals, cls=ISDValueEncoder)
-
-    print(f"Saving isd vals to compute {len(isd_values_to_compute)}")
-    filename = os.path.join(OUT_DIR, "isd-leda", "values", "from_restrictions",
-                            f"{ITERATION_OUT}"
-                            "isd_values_to_compute.json")
-    isd_vals = sorted(set(isd_values_to_compute))
-    save_to_json(filename, isd_vals, cls=ISDValueEncoder)
+    process()
 
 
 if __name__ == '__main__':
