@@ -4,7 +4,7 @@ from collections import defaultdict
 from typing import Dict, List, Set
 
 import numpy as np
-from isdleda.launchers.launcher_utils import AES_LAMBDAS, QAES_LAMBDAS
+from isdleda.launchers.launcher_utils import AES_LAMBDAS, QAES_LAMBDAS, OUT_DIR
 from isdleda.utils.common import ISDValue, LEDAValue, dict_to_leda_value
 from isdleda.utils.export.export import (ISDValueEncoder, LEDAValueEncoder,
                                          ledavalue_decoder, load_from_json,
@@ -207,7 +207,7 @@ def is_inside(c_time, q_time, c_lambda, q_lambda):
 
 def main():
     skip_if_exists = False
-    filename_merged = os.path.join("out", "values", "from_restrictions3",
+    filename_merged = os.path.join(OUT_DIR, "isd-leda", "values", "from_restrictions",
                                    "leda_values_merged.json")
     if skip_if_exists and os.path.isfile(filename_merged):
         print("Loading already merged values")
@@ -215,12 +215,12 @@ def main():
                                             object_hook=ledavalue_decoder)
     else:
         print("Loading t values")
-        filename = os.path.join("out", "values", "from_generation_3",
+        filename = os.path.join(OUT_DIR, "isd-leda", "values", "from_generation",
                                 "leda_values_t.json")
         leda_values_t_by_level = load_from_json(filename)
 
         print("Loading v values")
-        filename = os.path.join("out", "values", "from_generation_3",
+        filename = os.path.join(OUT_DIR, "isd-leda", "values", "from_generation",
                                 "leda_values_v.json")
         leda_values_v_by_level = load_from_json(filename)
 
@@ -238,7 +238,7 @@ def main():
         leda_values_merged)
     print(f"Passings each step {passing_at_step}")
 
-    filename = os.path.join("out", "values", "from_restrictions_3",
+    filename = os.path.join(OUT_DIR, "isd-leda", "values", "from_restrictions",
                             "leda_values_")
     print(f"Saving leda vals")
     for level, item in zip((1, 3, 5), leda_vals_ok.items()):
@@ -248,13 +248,13 @@ def main():
         save_to_json(filename_level, leda_vals, cls=LEDAValueEncoder)
 
     print(f"Saving isd vals ok {len(isd_values_ok)}")
-    filename = os.path.join("out", "values", "from_restrictions_3",
+    filename = os.path.join(OUT_DIR, "isd-leda", "values", "from_restrictions",
                             "isd_values.json")
     isd_vals = sorted(isd_values_ok)
     save_to_json(filename, isd_vals, cls=ISDValueEncoder)
 
     print(f"Saving isd vals to compute {len(isd_values_to_compute)}")
-    filename = os.path.join("out", "values", "from_restrictions_3",
+    filename = os.path.join(OUT_DIR, "isd-leda", "values", "from_restrictions",
                             "isd_values_to_compute.json")
     isd_vals = sorted(set(isd_values_to_compute))
     save_to_json(filename, isd_vals, cls=ISDValueEncoder)

@@ -8,7 +8,7 @@ from dataclasses import asdict
 from typing import Dict, List, Set
 
 import numpy as np
-from isdleda.launchers.launcher_utils import LEVELS, get_proper_leda_primes
+from isdleda.launchers.launcher_utils import LEVELS, get_proper_leda_primes, OUT_DIR
 from isdleda.utils.common import ISDValue, LEDAValue
 from isdleda.utils.export.export import ISDValueEncoder, save_to_json
 
@@ -116,18 +116,18 @@ def main():
                 del n, k, r, c, c_lambda_expected, v
 
     print("Saving isd vals")
-    filename = os.path.join("out", "values", "from_generation_3",
+    filename = os.path.join(OUT_DIR, "isd-leda", "values", "from_generation",
                             "isd_values.json")
     isd_vals = sorted(set(isd_values))
     save_to_json(filename, isd_vals, cls=ISDValueEncoder)
 
     print("Saving leda vals t")
-    filename = os.path.join("out", "values", "from_generation_3",
+    filename = os.path.join(OUT_DIR, "isd-leda", "values", "from_generation",
                             "leda_values_t.json")
     save_to_json(filename, leda_values_t_by_level, cls=CustomEncoder)
 
     print("Saving leda vals v")
-    filename = os.path.join("out", "values", "from_generation_3",
+    filename = os.path.join(OUT_DIR, "isd-leda", "values", "from_generation",
                             "leda_values_v.json")
     save_to_json(filename, leda_values_v_by_level, cls=CustomEncoder)
 

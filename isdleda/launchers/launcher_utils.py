@@ -5,6 +5,8 @@ import csv
 from enum import IntEnum
 from typing import Optional, List
 
+OUT_DIR=os.path.join("..", "leda_design", "stime_ISD")
+
 # Official levels
 LEVELS = (128, 192, 256)
 # Official NIST values
