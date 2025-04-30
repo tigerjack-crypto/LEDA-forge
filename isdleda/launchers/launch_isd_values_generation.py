@@ -1,159 +1,135 @@
-"""Generate a range of useful values for LEDA, based on the approximation of
-Torres, Sendrier - PQCrypto 2016
-
+"""Exhaustive search over all parameters.
+The Torres, Sendrier approximation did not work so good.
 """
-import csv
-import itertools
+import json
 import os
+from collections import defaultdict
 from dataclasses import asdict
-from typing import Dict
+from typing import Dict, List, Set
 
 import numpy as np
-from isdleda.launchers.launcher_utils import AES_LAMBDAS
-from isdleda.utils.common import ISDValue
-from isdleda.utils.export.export import save_to_json
-
-# from isdleda.utils.paths import ISD_VALUES_FILE_JSON, ISD_VALUES_FILE_PKL
+from isdleda.launchers.launcher_utils import LEVELS, get_proper_leda_primes
+from isdleda.utils.common import ISDValue, LEDAValue
+from isdleda.utils.export.export import ISDValueEncoder, save_to_json
 
 
-# def add_to_dict(values: Dict[str, Value], n, r, t, prime, n0, v, lambd, msg):
-def add_to_dict(values: Dict[str, ISDValue], n, r, t, msg):
-    _key = f"{n}_{r}_{t}"
-    if _key not in values:
-        value = ISDValue(
-            n=n,
-            r=r,
-            # This is the t used to assess the ISD attack
-            t=t,
-            # prime=prime,
-            # n0=n0,
-            # v=v,
-            # lambd=lambd,
-            msgs=[msg],
-        )
-        values[_key] = value
-    else:
-        _val = values[_key]
-        _val.msgs.append(msg)
+class CustomEncoder(json.JSONEncoder):
+
+    def default(self, obj):
+        if isinstance(obj, LEDAValue):
+            return asdict(obj)
+        if isinstance(obj, set):
+            return list(obj)
+        return super().default(obj)
 
 
 def main():
-    proper_primes = None
-    with open('./isdleda/assets/proper_primes.csv', 'r',
-              newline='') as csvfile:
-        reader = csv.reader(csvfile)
-        # actually there's just one row
-        for row in reader:
-            proper_primes = list(map(int, row))
-    assert proper_primes is not None
-    n0_values = range(2, 6)
+    leda_primes = get_proper_leda_primes()
 
-    # lambda_values = (128, 192, 256)
-    lambda_values = AES_LAMBDAS
-    values: Dict[str, ISDValue] = dict()
+    isd_values: List[ISDValue] = []
+    # level -> p_n0; all values have t != -1, v == -1
+    leda_values_t_by_level: Dict[int, Dict[str, Set[LEDAValue]]] = defaultdict(
+        lambda: defaultdict(set))
+    # level -> p_n0; all values have v != -1, t == -1
+    leda_values_v_by_level: Dict[int, Dict[str, Set[LEDAValue]]] = defaultdict(
+        lambda: defaultdict(set))
 
-    for n0, lam in itertools.product(n0_values, lambda_values):
-        # Approximate ISD hardness (Sendrier method). Given the weight $w$ of
-        # the codeword/error to be found and the code rate k/n=R, an ISD costs
-        # approx 2^cw, where the constant c depends on the rate
-        #
-        # c = log_2(1/(1-R)) = -log_2(1-R) ;
-        #
-        # so, from 2^cw = 2^lambda, given lambda and n0, we first compute c,
-        # and then
-        #
-        # w = -lam/c
+    for level_idx, c_lambda in enumerate(LEVELS):
+        # for c_lambda in LEVELS:
+        for prime in filter(lambda p: 5e3 < p < 9e4, leda_primes):
+            for n0 in range(2, 6):
+                # MRA, KRA1, 2, 3
 
-        # MRA (SDP) ;
-        # ISD(n, k, t); code rate (n0-1)/n0
-        c = -np.log2(1 - (n0 - 1) / n0)
-        t1 = np.ceil(lam / c)
-        # NOTE: the ISD parameters in LEDA are (n, r, t) and not (n, k, t) as usual
-        # KRA1 (CFP); ISD(n0*p,p,2*v) / (p*binom{n0}{2}); code rate (n0-1)/n0;
-        # target weight = 2*v
-        c = -np.log2(1 - (n0 - 1) / n0)
-        v1 = np.ceil(lam / (2 * c))
-        # KRA2 (CFP); ISD(2*p,p,2*v) / (n0*p); attacked code rate (1/2); target weight = 2v
-        c = -np.log2(1 - 1 / 2)
-        v2 = np.ceil(lam / (2 * c))
-        # KRA3 (CFP); ISD(n0*p,(n0-1)*p,n0*v) / p; attacked code rate 1/n0; target weight = n0*v
-        c = -np.log2(1 - 1 / n0)
-        v3 = np.ceil(lam / (n0 * c))
+                n = prime * n0
+                if n > 2e5:
+                    continue
+                # MRA, KRA1, KRA2, KRA3
+                r = prime
+                k = n - r
+                c = -np.log2(1 - k / n)
+                c_lambda_expected = c_lambda - 3 * np.log2(r)
+                tmin = int(np.floor(.8 * c_lambda_expected / c))
+                tmax = int(np.ceil(1.2 * c_lambda_expected / c))
 
-        # KEY recovery
-        v_min = min(v1, v2, v3)
-        v_max = max(v1, v2, v3)
+                for t in range(tmin, tmax, 1):
+                    isd_values.append(ISDValue(n, r, t, msgs=[f"MRA"]))
+                    leda_values_t_by_level[level_idx][f"{prime}_{n0}"].add(
+                        LEDAValue(prime, n0, t, -1, msgs=[f"MRA"]))
+                del n, k, r, c, c_lambda_expected, t
 
-        v_range_low = int(.7 * v_min)
-        v_range_high = int(1.3 * v_max)
+                # KRA1
+                n = prime * n0
+                r = prime
+                k = n - r
+                c = -np.log2(1 - k / n)
+                c_lambda_expected = c_lambda - 3 * np.log2(r)
 
-        # v should be odd
-        if not v_range_low % 2:
-            v_range_low -= 1
-        if not v_range_high % 2:
-            v_range_high += 1
+                vmin = int(np.floor(.8 * c_lambda_expected / (2 * c)))
+                vmax = int(np.ceil(1.2 * c_lambda_expected / (2 * c)))
+                if vmin % 2 == 0:
+                    vmin -= 1
+                if vmax % 2 == 0:
+                    vmax += 1
+                for v in range(vmin, vmax, 2):
+                    isd_values.append(ISDValue(n, r, 2 * v, msgs=[f"KRA 1"]))
+                    leda_values_v_by_level[level_idx][f"{prime}_{n0}"].add(
+                        LEDAValue(prime, n0, -1, v, msgs=[f"KRA 1"]))
+                del n, k, r, c, c_lambda_expected, v
 
-        for v in range(v_range_low, v_range_high, 2):
-            # since v ~= sqrt(n) = sqrt(p*n0) -> v**2 = p * n0 -> p = v**2 * n0
-            prime_guess = v**2 * n0
-
-            # Take only the acceptable primes with a +-20% margin on the prime
-            # guess
-            prime_range = filter(
-                lambda p: p >= int(.8 * prime_guess) and p <= int(
-                    1.2 * prime_guess), proper_primes)
-            # NOTE the t values here are NOT the t to be used in the parameter
-            # set, but only the equivalent t used to compute the complexity of
-            # the Codeword Finding Problem (CFP)
-            for prime in prime_range:
-                # key recovery 1: ISD(n0*p, p, 2*v)
-                msg = "KR1"
-                _n = prime * n0
-                _r = prime
-                _t = 2 * v
-                add_to_dict(values, _n, _r, _t, msg)
-
-                # key recovery 3 ISD(n0*p, (n0-1)*p, n0*v
-                msg = "KR3"
-                _n = prime * n0
-                # Note that, for this attack we are considering the dual code,
-                # and hence k<r.
-                _r = (n0 - 1) * prime
-                _t = n0 * v
-                add_to_dict(values, _n, _r, _t, msg)
-
-                # key recovery 2 ISD(2p, p, 2v)
-                # Each n0 !=2 can be reduced to n0=2
+                # KRA2
                 if n0 != 2:
-                    msg = "KR2"
-                    _n = prime * 2
-                    _r = prime
-                    _t = 2 * v
-                    add_to_dict(values, _n, _r, _t, msg)
+                    n = 2 * prime
+                    r = prime
+                    k = n - r
+                    c = -np.log2(1 - k / n)
+                    c_lambda_expected = c_lambda - 3 * np.log2(r)
 
-        # Message recovery, i.e., Syndrome Decoding Problem (SDP)
-        # the +3 skip is just to sweep the range faster
-        for t in range(int(t1 * .8), int(t1 * 1.2), 3):
-            # same as before
-            prime_guess = t**2 * n0
-            prime_range = filter(
-                lambda p: p >= int(.8 * prime_guess) and p <= int(
-                    1.2 * prime_guess), proper_primes)
-            for prime in prime_range:
-                # msg recovery p*n0, p, t
-                _n = prime * n0
-                _r = prime
-                _t = t
-                add_to_dict(values, _n, _r, _t, msg)
+                    vmin = int(np.floor(.8 * c_lambda_expected / (2 * c)))
+                    vmax = int(np.ceil(1.2 * c_lambda_expected / (2 * c)))
+                    if vmin % 2 == 0:
+                        vmin -= 1
+                    if vmax % 2 == 0:
+                        vmax += 1
+                    for v in range(vmin, vmax, 2):
+                        isd_values.append(
+                            ISDValue(n, r, 2 * v, msgs=[f"KRA 2"]))
+                        leda_values_v_by_level[level_idx][f"{prime}_{n0}"].add(
+                            LEDAValue(prime, n0, -1, v, msgs=[f"KRA 2"]))
+                    del n, k, r, c, c_lambda_expected, v
 
-    print(len(values))
-    values_set = set(values.values())
-    # print(f"Pickling to {ISD_VALUES_FILE_PKL}")
-    # save_to_pickle(ISD_VALUES_FILE_PKL, values_set)
-    filename = os.path.join("out", "values", "from_generation",
+                # KRA3
+                n = prime * n0
+                r = prime * (n0 - 1)
+                k = n - r
+                c = -np.log2(1 - k / n)
+                c_lambda_expected = c_lambda - 3 * np.log2(r)
+                vmin = int(np.floor(.8 * c_lambda_expected / (n0 * c)))
+                vmax = int(np.ceil(1.2 * c_lambda_expected / (n0 * c)))
+                if vmin % 2 == 0:
+                    vmin -= 1
+                if vmax % 2 == 0:
+                    vmax += 1
+                for v in range(vmin, vmax, 2):
+                    isd_values.append(ISDValue(n, r, n0 * v, msgs=[f"KRA 3"]))
+                    leda_values_v_by_level[level_idx][f"{prime}_{n0}"].add(
+                        LEDAValue(prime, n0, -1, v, msgs=[f"KRA 3"]))
+                del n, k, r, c, c_lambda_expected, v
+
+    print("Saving isd vals")
+    filename = os.path.join("out", "values", "from_generation_3",
                             "isd_values.json")
-    print(f"JSONing to {filename}")
-    save_to_json(filename, [asdict(x) for x in sorted(values_set)])
+    isd_vals = sorted(set(isd_values))
+    save_to_json(filename, isd_vals, cls=ISDValueEncoder)
+
+    print("Saving leda vals t")
+    filename = os.path.join("out", "values", "from_generation_3",
+                            "leda_values_t.json")
+    save_to_json(filename, leda_values_t_by_level, cls=CustomEncoder)
+
+    print("Saving leda vals v")
+    filename = os.path.join("out", "values", "from_generation_3",
+                            "leda_values_v.json")
+    save_to_json(filename, leda_values_v_by_level, cls=CustomEncoder)
 
 
 if __name__ == '__main__':
