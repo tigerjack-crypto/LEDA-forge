@@ -138,3 +138,32 @@ def isdvalue_decoder(data):
         return [isdvalue_decoder(item) for item in data]
     else:
         return data
+
+def from_csv_to_isdvalue(csv_path: str) -> List[ISDValue]:
+    result = []
+    with open(csv_path, newline='') as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            n = int(row['n'])
+            r = int(row['r'])
+            t = int(row['t'])
+            msgs = row.get('msgs', '')
+            msgs_list = [msg.strip() for msg in msgs.split(';') if msg.strip()]
+            result.append(ISDValue(n=n, r=r, t=t, msgs=msgs_list))
+    return result
+
+def from_csv_to_ledavalue(csv_path: str) -> List[LEDAValue]:
+    result = []
+    with open(csv_path, newline='') as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            p = int(row['p'])
+            n0 = int(row['n0'])
+            t = int(row['t'])
+            v = int(row['v'])
+            tau_raw = row.get('tau', '')
+            tau = int(tau_raw) if tau_raw.strip() else None
+            msgs = row.get('msgs', '')
+            msgs_list = [msg.strip() for msg in msgs.split(';') if msg.strip()]
+            result.append(LEDAValue(p=p, n0=n0, t=t, v=v, tau=tau, msgs=msgs_list))
+    return result
