@@ -9,7 +9,7 @@ ITERATION=0
 
 isd_values: List[ISDValue] = []
 for level in (1, 3, 5):
-    filename = f"/mnt/data/simone/vc/crypto/leda_design/stime_ISD/post_dfr_in/{ITERATION}/cat_{level}_region"
+    filename = f"{OUT_DIR}/post_dfr_in/{ITERATION}/cat_{level}_region"
     ledavalues = from_csv_to_ledavalue(f"{filename}.csv")
 
     for leda_val in ledavalues:
