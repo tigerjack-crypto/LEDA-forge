@@ -30,7 +30,10 @@ def main():
                 isd_values.append(get_kra2_from_leda(leda_val))
             isd_values.append(get_kra3_from_leda(leda_val))
 
-    print(len(isd_values))
+    print(f"{len(isd_values)} before removing duplicates")
+    isd_vals = set(isd_values)
+    del isd_values
+    print(f"{len(isd_vals)} after removing duplicates")
     counter = get_pass_counter(output_dir)
     _tmp =  os.path.join(output_dir, f"{counter}_leda2isd")
     if os.path.exists(_tmp):
@@ -41,9 +44,12 @@ def main():
     else:
         counter += 1
         _tmp =  os.path.join(output_dir, f"{counter}_leda2isd")
+    if not os.path.exists(_tmp):
+        os.mkdir(_tmp)
+
     filename = os.path.join(_tmp, "isd_values.json")
     print(f"Output file {filename}")
-    save_to_json(filename, isd_values, cls=ISDValueEncoder)
+    save_to_json(filename, isd_vals, cls=ISDValueEncoder)
     set_pass_counter(output_dir, counter)
 
 
