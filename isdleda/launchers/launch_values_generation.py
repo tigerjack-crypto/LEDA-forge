@@ -145,12 +145,6 @@ def main():
                         LEDAValue(prime, n0, -1, v, msgs=[f"KRA 3"]))
                 del n, k, r, c, c_lambda_expected, v
 
-    print("Saving isd vals")
-    filename = os.path.join(OUT_DIR, "isd-leda", "values",
-                            "exhaustive_generation", "isd_values")
-    isd_vals = sorted(set(isd_values))
-    save_to_json(filename, isd_vals, cls=ISDValueEncoder)
-
     print("Saving leda vals")
     dirpath = os.path.join(
         OUT_DIR,
@@ -173,6 +167,13 @@ def main():
     # filename = os.path.join(OUT_DIR, "isd-leda", "values", "exhaustive_generation",
     #                         "leda_values_v")
     # save_to_json(filename, leda_values_v_by_level, cls=CustomEncoder)
+
+    print("Saving isd vals")
+    filename = os.path.join(OUT_DIR, "isd-leda", "values",
+                            "exhaustive_generation", "isd_values")
+    isd_vals = sorted(set(isd_values))
+    save_to_json(filename, isd_vals, cls=ISDValueEncoder)
+
 
 
 if __name__ == '__main__':
