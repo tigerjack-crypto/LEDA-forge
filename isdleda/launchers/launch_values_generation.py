@@ -29,7 +29,7 @@ def merge_leda_values(
     leda_values_v_by_level: Dict[int, Dict[str, Set[LEDAValue]]]
 ) -> Dict[int, List[LEDAValue]]:
     # levels = [1, 3, 5]
-    merged = defaultdict(lambda: list)
+    merged = defaultdict(list)
 
     for level_idx, _ in enumerate(LEVELS):
         # level = levels[level_idx]
