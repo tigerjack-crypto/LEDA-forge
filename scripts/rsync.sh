@@ -29,7 +29,7 @@ fi
 
 SERVER=$1
 
-echo "syncing to $SERVER"
+echo "syncing $PROJECT_ROOT/$PROJECT to $SERVER:vc/"
 
 rsync -avz --info=progress2 \
   --filter="merge $PROJECT_ROOT/$PROJECT/rsync_filter.txt" \

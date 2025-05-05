@@ -18,7 +18,9 @@
 - .venv/
 
 # Exclude version control directories
+- .gitmodules
 - .git/
+- .gitignore
 
 # Exclude build artifacts
 - build/
