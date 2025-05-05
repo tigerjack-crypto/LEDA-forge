@@ -153,7 +153,6 @@ def main():
                         leda_val)
                     isd_values.append(get_kra3_from_leda(leda_val))
 
-    print("Saving leda vals")
     dirpath = os.path.join(
         OUT_DIR,
         "isd-leda",
@@ -166,22 +165,13 @@ def main():
                                            leda_values_v_by_level)
     for level_idx, _ in enumerate(LEVELS):
         filename = os.path.join(dirpath, f"cat_{levels[level_idx]}_region.csv")
+        print(f"Saving leda vals to {filename}")
         save_ledavalues_to_csv(merged_leda_values[level_idx], filename)
 
-    # print("Saving leda vals t")
-    # filename = os.path.join(OUT_DIR, "isd-leda", "values", "exhaustive_generation",
-    #                         "leda_values_t")
-    # save_to_json(filename, leda_values_t_by_level, cls=CustomEncoder)
-
-    # print("Saving leda vals v")
-    # filename = os.path.join(OUT_DIR, "isd-leda", "values", "exhaustive_generation",
-    #                         "leda_values_v")
-    # save_to_json(filename, leda_values_v_by_level, cls=CustomEncoder)
-
-    print("Saving isd vals")
     filename = os.path.join(OUT_DIR, "isd-leda", "values",
                             "exhaustive_generation", "isd_values")
     isd_vals = sorted(set(isd_values))
+    print(f"Saving isd vals to {filename}")
     save_to_json(filename, isd_vals, cls=ISDValueEncoder)
 
 
