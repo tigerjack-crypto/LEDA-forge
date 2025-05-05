@@ -19,8 +19,17 @@
 
 set -o nounset                              # Treat unset variables as an error
 PROJECT=isd-leda
-PROJECT_ROOT=/mnt/data/simone/vc/crypto
-SERVER=forge
+PROJECT_ROOT="$MDIR_LINUX_DATA"/vc/crypto
+echo "project root $PROJECT_ROOT"
+# SERVER=alphonseasproxy
+if [ -z "$1" ]; then
+  echo "Usage: $0 <SERVER>"
+  exit 1
+fi
+
+SERVER=$1
+
+echo "syncing to $SERVER"
 
 rsync -avz --info=progress2 \
   --filter="merge $PROJECT_ROOT/$PROJECT/rsync_filter.txt" \
