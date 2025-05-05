@@ -7,7 +7,7 @@ from sys import argv
 # from typing import Set
 
 import numpy as np
-from isdleda.launchers.launcher_utils import AES_LAMBDAS, OUT_DIR, QAES_LAMBDAS, get_pass_counter, set_pass_counter
+from isdleda.launchers.launcher_utils import AES_LAMBDAS, OUT_DIR, QAES_LAMBDAS, get_kra1_from_leda, get_kra2_from_leda, get_kra3_from_leda, get_mra_from_leda, get_pass_counter, set_pass_counter
 # from isdleda.utils.common import ISDValue
 from isdleda.utils.export.export import (
     from_csv_to_ledavalue,
@@ -66,14 +66,12 @@ def main():
             csv_value.append(leda_val.t)
 
             # MRA
-            n = leda_val.p * leda_val.n0
-            k = leda_val.p * (leda_val.n0 - 1)
-            t = leda_val.t
+            isd_val = get_mra_from_leda(leda_val)
             c_aes, q_aes, _ = check_dataset(
                 attack_dir,
-                n=n,
-                k=k,
-                t=t,
+                n=isd_val.n,
+                k=isd_val.n - isd_val.r,
+                t=isd_val.t,
                 c_lambda=c_lambda,
                 q_lambda=q_lambda,
                 reduction=np.log2(leda_val.p) / 2,
@@ -83,17 +81,15 @@ def main():
             q_values.append(q_aes)
             csv_value.append(c_aes)
             csv_value.append(q_aes)
-            del n, k, t
+            del isd_val
 
             # KRA 1
-            n = leda_val.p * leda_val.n0  #
-            k = leda_val.p * (leda_val.n0 - 1)  #
-            t = leda_val.v * 2
+            isd_val = get_kra1_from_leda(leda_val)
             c_aes, q_aes, _ = check_dataset(
                 attack_dir,
-                n=n,
-                k=k,
-                t=t,
+                n=isd_val.n,
+                k=isd_val.n - isd_val.r,
+                t=isd_val.t,
                 c_lambda=c_lambda,
                 q_lambda=q_lambda,
                 reduction=np.log2(leda_val.p) + np.log2(leda_val.n0) +
@@ -104,18 +100,16 @@ def main():
             q_values.append(q_aes)
             csv_value.append(c_aes)
             csv_value.append(q_aes)
-            del n, k, t
+            del isd_val
 
             # KRA 2
             if leda_val.n0 != 2:
-                n = 2 * leda_val.p
-                k = leda_val.p
-                t = leda_val.v * 2
+                isd_val = get_kra2_from_leda(leda_val)
                 c_aes, q_aes, _ = check_dataset(
                 attack_dir,
-                    n=n,
-                    k=k,
-                    t=t,
+                    n=isd_val.n,
+                    k=isd_val.n - isd_val.r,
+                    t=isd_val.t,
                     c_lambda=c_lambda,
                     q_lambda=q_lambda,
                     reduction=np.log2(leda_val.p) + np.log2(leda_val.n0),
@@ -125,20 +119,17 @@ def main():
                 q_values.append(q_aes)
                 csv_value.append(c_aes)
                 csv_value.append(q_aes)
-                del n, k, t
             else:
                 csv_value.append(np.inf)
                 csv_value.append(np.inf)
 
             # KRA 3
-            n = leda_val.p * leda_val.n0
-            k = leda_val.p
-            t = leda_val.v * leda_val.n0
+            isd_val = get_kra3_from_leda(leda_val)
             c_aes, q_aes, _ = check_dataset(
                 attack_dir,
-                n=n,
-                k=k,
-                t=t,
+                n=isd_val.n,
+                k=isd_val.n - isd_val.r,
+                t=isd_val.t,
                 c_lambda=c_lambda,
                 q_lambda=q_lambda,
                 reduction=np.log2(leda_val.p),
@@ -148,7 +139,6 @@ def main():
             q_values.append(q_aes)
             csv_value.append(c_aes)
             csv_value.append(q_aes)
-            del n, k, t
 
             # min c, min q, min c attack, min q attack
             min_c = min(c_values)

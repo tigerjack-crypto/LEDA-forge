@@ -10,7 +10,7 @@ from sys import argv
 from typing import Dict, List, Set
 
 import numpy as np
-from isdleda.launchers.launcher_utils import (LEVELS, OUT_DIR,
+from isdleda.launchers.launcher_utils import (LEVELS, OUT_DIR, get_kra1_from_leda, get_kra2_from_leda, get_kra3_from_leda, get_mra_from_leda,
                                               get_proper_leda_primes)
 from isdleda.utils.common import ISDValue, LEDAValue
 from isdleda.utils.export.export import (ISDValueEncoder,
@@ -57,8 +57,7 @@ def merge_leda_values(
 
 
 def main():
-    stage = argv[1] # the stage in which we are in
-
+    stage = argv[1]  # the stage in which we are in
 
     leda_primes = get_proper_leda_primes()
 
@@ -88,10 +87,11 @@ def main():
                 tmax = int(np.ceil(1.2 * c_lambda_expected / c))
 
                 for t in range(tmin, tmax, 1):
-                    isd_values.append(ISDValue(n, r, t, msgs=[f"MRA"]))
+                    leda_val = LEDAValue(prime, n0, t, -1, msgs=[f"MRA"])
                     leda_values_t_by_level[level_idx][f"{prime}_{n0}"].add(
-                        LEDAValue(prime, n0, t, -1, msgs=[f"MRA"]))
-                del n, k, r, c, c_lambda_expected, t
+                        leda_val)
+                    isd_values.append(get_mra_from_leda(leda_val))
+                del n, k, r, c, c_lambda_expected, t, leda_val
 
                 # KRA1
                 n = prime * n0
@@ -107,10 +107,11 @@ def main():
                 if vmax % 2 == 0:
                     vmax += 1
                 for v in range(vmin, vmax, 2):
-                    isd_values.append(ISDValue(n, r, 2 * v, msgs=[f"KRA 1"]))
+                    leda_val = LEDAValue(prime, n0, -1, v, msgs=[f"KRA 1"])
                     leda_values_v_by_level[level_idx][f"{prime}_{n0}"].add(
-                        LEDAValue(prime, n0, -1, v, msgs=[f"KRA 1"]))
-                del n, k, r, c, c_lambda_expected, v
+                        leda_val)
+                    isd_values.append(get_kra1_from_leda(leda_val))
+                del n, k, r, c, c_lambda_expected, v, leda_val
 
                 # KRA2
                 if n0 != 2:
@@ -127,11 +128,12 @@ def main():
                     if vmax % 2 == 0:
                         vmax += 1
                     for v in range(vmin, vmax, 2):
-                        isd_values.append(
-                            ISDValue(n, r, 2 * v, msgs=[f"KRA 2"]))
+                        leda_val = LEDAValue(prime, n0, -1, v, msgs=[f"KRA 2"])
                         leda_values_v_by_level[level_idx][f"{prime}_{n0}"].add(
-                            LEDAValue(prime, n0, -1, v, msgs=[f"KRA 2"]))
-                    del n, k, r, c, c_lambda_expected, v
+                            leda_val)
+                        isd_values.append(
+                            get_kra2_from_leda(leda_val))
+                    del n, k, r, c, c_lambda_expected, v, leda_val
 
                 # KRA3
                 n = prime * n0
@@ -146,10 +148,10 @@ def main():
                 if vmax % 2 == 0:
                     vmax += 1
                 for v in range(vmin, vmax, 2):
-                    isd_values.append(ISDValue(n, r, n0 * v, msgs=[f"KRA 3"]))
+                    leda_val = LEDAValue(prime, n0, -1, v, msgs=[f"KRA 3"])
                     leda_values_v_by_level[level_idx][f"{prime}_{n0}"].add(
-                        LEDAValue(prime, n0, -1, v, msgs=[f"KRA 3"]))
-                del n, k, r, c, c_lambda_expected, v
+                        leda_val)
+                    isd_values.append(get_kra3_from_leda(leda_val))
 
     print("Saving leda vals")
     dirpath = os.path.join(
@@ -160,7 +162,8 @@ def main():
         "exhaustive_generation",
     )
     levels = [1, 3, 5]
-    merged_leda_values = merge_leda_values(leda_values_t_by_level, leda_values_v_by_level)
+    merged_leda_values = merge_leda_values(leda_values_t_by_level,
+                                           leda_values_v_by_level)
     for level_idx, _ in enumerate(LEVELS):
         filename = os.path.join(dirpath, f"cat_{levels[level_idx]}_region.csv")
         save_ledavalues_to_csv(merged_leda_values[level_idx], filename)
@@ -180,7 +183,6 @@ def main():
                             "exhaustive_generation", "isd_values")
     isd_vals = sorted(set(isd_values))
     save_to_json(filename, isd_vals, cls=ISDValueEncoder)
-
 
 
 if __name__ == '__main__':

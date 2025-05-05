@@ -5,6 +5,8 @@ import csv
 from enum import IntEnum
 from typing import Optional, List
 
+from isdleda.utils.common import ISDValue
+
 OUT_DIR=os.path.join("..", "leda_design", "stime_ISD")
 
 # Official levels
@@ -44,6 +46,7 @@ def get_pass_counter(dir_path: str) -> int:
         current_pass = int(f.read().strip())
 
     return current_pass
+
 def set_pass_counter(dir_path: str, value: int):
     counter_file = os.path.join(dir_path, "counter.txt")
 
@@ -90,3 +93,28 @@ def get_proper_leda_primes() -> List[int]:
         for row in reader:
             proper_primes = list(map(int, row))
     return proper_primes
+
+def get_mra_from_leda(leda_val):
+    n = leda_val.p * leda_val.n0
+    k = leda_val.p * (leda_val.n0 - 1)
+    t = leda_val.t
+    return ISDValue(n, n-k, t, msgs=[f"MRA"])
+
+def get_kra1_from_leda(leda_val):
+    n = leda_val.p * leda_val.n0  #
+    k = leda_val.p * (leda_val.n0 - 1)  #
+    t = leda_val.v * 2
+    return ISDValue(n, n-k, t, msgs=[f"KRA1"])
+
+def get_kra2_from_leda(leda_val):
+    n = 2 * leda_val.p
+    k = leda_val.p
+    t = leda_val.v * 2
+    return ISDValue(n, n-k, t, msgs=[f"KRA2"])
+
+
+def get_kra3_from_leda(leda_val):
+    n = leda_val.p * leda_val.n0
+    k = leda_val.p
+    t = leda_val.v * leda_val.n0
+    return ISDValue(n, n-k, t, msgs=[f"KRA3"])

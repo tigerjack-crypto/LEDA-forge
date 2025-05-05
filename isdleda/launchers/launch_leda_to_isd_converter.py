@@ -4,7 +4,7 @@ import os
 from sys import argv
 from typing import List
 
-from isdleda.launchers.launcher_utils import get_pass_counter, OUT_DIR, set_pass_counter
+from isdleda.launchers.launcher_utils import get_kra1_from_leda, get_kra2_from_leda, get_kra3_from_leda, get_mra_from_leda, get_pass_counter, OUT_DIR, set_pass_counter
 from isdleda.utils.common import ISDValue
 from isdleda.utils.export.export import (ISDValueEncoder,
                                          from_csv_to_ledavalue, save_to_json)
@@ -22,31 +22,13 @@ def main():
         ledavalues = from_csv_to_ledavalue(f"{filename}.csv")
 
         for leda_val in ledavalues:
-            # MRA
-            n = leda_val.p * leda_val.n0
-            k = leda_val.p * (leda_val.n0 - 1)
-            t = leda_val.t
-            isd_values.append(ISDValue(n, n - k, t, msgs=[f"MRA"]))
-
-            # KRA 1
-            n = leda_val.p * leda_val.n0  #
-            k = leda_val.p * (leda_val.n0 - 1)  #
-            t = leda_val.v * 2
-            isd_values.append(ISDValue(n, n - k, t, msgs=[f"KRA 1"]))
+            isd_values.append(get_mra_from_leda(leda_val))
+            isd_values.append(get_kra1_from_leda(leda_val))
 
             # KRA 2
             if leda_val.n0 != 2:
-                n = 2 * leda_val.p
-                k = leda_val.p
-                t = leda_val.v * 2
-                isd_values.append(ISDValue(n, n - k, t, msgs=[f"KRA 2"]))
-
-            # KRA 3
-            n = leda_val.p * leda_val.n0
-            k = leda_val.p
-            t = leda_val.v * leda_val.n0
-
-            isd_values.append(ISDValue(n, n - k, t, msgs=[f"KRA 3"]))
+                isd_values.append(get_kra2_from_leda(leda_val))
+            isd_values.append(get_kra3_from_leda(leda_val))
 
     print(len(isd_values))
     counter = get_pass_counter(output_dir)
