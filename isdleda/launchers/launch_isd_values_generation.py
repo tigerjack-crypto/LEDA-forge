@@ -6,11 +6,12 @@ import os
 from collections import defaultdict
 from dataclasses import asdict
 from typing import Dict, List, Set
+from itertools import product
 
 import numpy as np
 from isdleda.launchers.launcher_utils import LEVELS, get_proper_leda_primes, OUT_DIR
 from isdleda.utils.common import ISDValue, LEDAValue
-from isdleda.utils.export.export import ISDValueEncoder, save_to_json
+from isdleda.utils.export.export import ISDValueEncoder, save_ledavalues_to_csv, save_to_json
 
 
 class CustomEncoder(json.JSONEncoder):
@@ -21,6 +22,35 @@ class CustomEncoder(json.JSONEncoder):
         if isinstance(obj, set):
             return list(obj)
         return super().default(obj)
+
+
+def merge_leda_values(
+    leda_values_t_by_level: Dict[int, Dict[str, Set[LEDAValue]]],
+    leda_values_v_by_level: Dict[int, Dict[str, Set[LEDAValue]]]
+) -> Dict[int, List[LEDAValue]]:
+    # levels = [1, 3, 5]
+    merged = defaultdict(lambda: list)
+
+    for level_idx, _ in enumerate(LEVELS):
+        # level = levels[level_idx]
+        keys = set(leda_values_t_by_level.get(level_idx, {})) | set(
+            leda_values_v_by_level.get(level_idx, {}))
+        for key in keys:
+            t_vals = leda_values_t_by_level.get(level_idx, {}).get(key, set())
+            v_vals = leda_values_v_by_level.get(level_idx, {}).get(key, set())
+
+            # Cartesian product of all t's and v's
+            for t_val, v_val in product(t_vals, v_vals):
+                merged_val = LEDAValue(
+                    p=t_val.p if t_val.p is not None else v_val.p,
+                    n0=t_val.n0 if t_val.n0 is not None else v_val.n0,
+                    t=t_val.t,
+                    v=v_val.v,
+                    tau=t_val.tau if t_val.tau is not None else v_val.tau,
+                    msgs=(t_val.msgs or []) + (v_val.msgs or []))
+                merged[level_idx].append(merged_val)
+
+    return merged
 
 
 def main():
@@ -116,20 +146,33 @@ def main():
                 del n, k, r, c, c_lambda_expected, v
 
     print("Saving isd vals")
-    filename = os.path.join(OUT_DIR, "isd-leda", "values", "from_generation",
-                            "isd_values.json")
+    filename = os.path.join(OUT_DIR, "isd-leda", "values",
+                            "exhaustive_generation", "isd_values")
     isd_vals = sorted(set(isd_values))
     save_to_json(filename, isd_vals, cls=ISDValueEncoder)
 
-    print("Saving leda vals t")
-    filename = os.path.join(OUT_DIR, "isd-leda", "values", "from_generation",
-                            "leda_values_t.json")
-    save_to_json(filename, leda_values_t_by_level, cls=CustomEncoder)
+    print("Saving leda vals")
+    dirpath = os.path.join(
+        OUT_DIR,
+        "isd-leda",
+        "values",
+        "exhaustive_generation",
+    )
+    levels = [1, 3, 5]
+    merged_leda_values = merge_leda_values(leda_values_t_by_level, leda_values_v_by_level)
+    for level_idx, _ in enumerate(LEVELS):
+        filename = os.path.join(dirpath, f"cat_{levels[level_idx]}_region.csv")
+        save_ledavalues_to_csv(merged_leda_values[level_idx], filename)
 
-    print("Saving leda vals v")
-    filename = os.path.join(OUT_DIR, "isd-leda", "values", "from_generation",
-                            "leda_values_v.json")
-    save_to_json(filename, leda_values_v_by_level, cls=CustomEncoder)
+    # print("Saving leda vals t")
+    # filename = os.path.join(OUT_DIR, "isd-leda", "values", "exhaustive_generation",
+    #                         "leda_values_t")
+    # save_to_json(filename, leda_values_t_by_level, cls=CustomEncoder)
+
+    # print("Saving leda vals v")
+    # filename = os.path.join(OUT_DIR, "isd-leda", "values", "exhaustive_generation",
+    #                         "leda_values_v")
+    # save_to_json(filename, leda_values_v_by_level, cls=CustomEncoder)
 
 
 if __name__ == '__main__':
