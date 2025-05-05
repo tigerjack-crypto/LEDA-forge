@@ -5,13 +5,16 @@ import json
 import os
 from collections import defaultdict
 from dataclasses import asdict
-from typing import Dict, List, Set
 from itertools import product
+from sys import argv
+from typing import Dict, List, Set
 
 import numpy as np
-from isdleda.launchers.launcher_utils import LEVELS, get_proper_leda_primes, OUT_DIR
+from isdleda.launchers.launcher_utils import (LEVELS, OUT_DIR,
+                                              get_proper_leda_primes)
 from isdleda.utils.common import ISDValue, LEDAValue
-from isdleda.utils.export.export import ISDValueEncoder, save_ledavalues_to_csv, save_to_json
+from isdleda.utils.export.export import (ISDValueEncoder,
+                                         save_ledavalues_to_csv, save_to_json)
 
 
 class CustomEncoder(json.JSONEncoder):
@@ -54,6 +57,9 @@ def merge_leda_values(
 
 
 def main():
+    stage = argv[1] # the stage in which we are in
+
+
     leda_primes = get_proper_leda_primes()
 
     isd_values: List[ISDValue] = []
@@ -150,6 +156,7 @@ def main():
         OUT_DIR,
         "isd-leda",
         "values",
+        f"S{stage}",
         "exhaustive_generation",
     )
     levels = [1, 3, 5]
