@@ -100,7 +100,7 @@ def main():
                 c = -np.log2(1 - k / n)
                 c_lambda_expected = c_lambda - 3 * np.log2(r)
 
-                vmin = int(np.floor(.8 * c_lambda_expected / (2 * c)))
+                vmin = int(np.floor(.6 * c_lambda_expected / (2 * c)))
                 vmax = int(np.ceil(1.2 * c_lambda_expected / (2 * c)))
                 if vmin % 2 == 0:
                     vmin -= 1
@@ -120,7 +120,7 @@ def main():
                     c = -np.log2(1 - k / n)
                     c_lambda_expected = c_lambda - 3 * np.log2(r)
 
-                    vmin = int(np.floor(.8 * c_lambda_expected / (2 * c)))
+                    vmin = int(np.floor(.6 * c_lambda_expected / (2 * c)))
                     vmax = int(np.ceil(1.2 * c_lambda_expected / (2 * c)))
                     if vmin % 2 == 0:
                         vmin -= 1
@@ -139,7 +139,7 @@ def main():
                 k = n - r
                 c = -np.log2(1 - k / n)
                 c_lambda_expected = c_lambda - 3 * np.log2(r)
-                vmin = int(np.floor(.8 * c_lambda_expected / (n0 * c)))
+                vmin = int(np.floor(.6 * c_lambda_expected / (n0 * c)))
                 vmax = int(np.ceil(1.2 * c_lambda_expected / (n0 * c)))
                 if vmin % 2 == 0:
                     vmin -= 1
