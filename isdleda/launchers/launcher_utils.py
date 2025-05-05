@@ -35,6 +35,21 @@ def argparse_check_positive(value):
     return value
 
 
+def get_pass_counter(dir_path: str) -> int:
+    counter_file = os.path.join(dir_path, "counter.txt")
+    if not os.path.exists(counter_file):
+        raise FileNotFoundError(f"No counter file in {dir_path}")
+
+    with open(counter_file, 'r') as f:
+        current_pass = int(f.read().strip())
+
+    return current_pass
+def set_pass_counter(dir_path: str, value: int):
+    counter_file = os.path.join(dir_path, "counter.txt")
+
+    with open(counter_file, 'w') as f:
+        f.write(f"{value}")
+
 def get_no_of_files(directory: str, out_format: str):
     total = 0
     # for root, dirs, files in os.walk("out/cisd"):

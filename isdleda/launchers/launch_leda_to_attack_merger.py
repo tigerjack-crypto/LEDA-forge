@@ -3,23 +3,16 @@ It should be merged with the restriction one.
 """
 import csv
 import os
-from typing import Set
+from sys import argv
+# from typing import Set
 
 import numpy as np
-from isdleda.launchers.launcher_utils import AES_LAMBDAS, OUT_DIR, QAES_LAMBDAS
-from isdleda.utils.common import ISDValue
+from isdleda.launchers.launcher_utils import AES_LAMBDAS, OUT_DIR, QAES_LAMBDAS, get_pass_counter, set_pass_counter
+# from isdleda.utils.common import ISDValue
 from isdleda.utils.export.export import (
     from_csv_to_ledavalue,
     load_from_json,
 )
-
-# the 0-th time this is launched
-ITERATION_IN = "0"
-ITERATION_OUT = "1_BJMM"
-
-DATA_SET = os.path.join(OUT_DIR, "LT", "results", "json")
-isd_values_to_compute: Set[ISDValue] = set()
-# isd_values: List[ISDValue] = []
 
 
 def write_to_csv(filename, values):
@@ -33,13 +26,33 @@ def write_to_csv(filename, values):
         writer.writerows(values)
 
 
-def process():
+def main():
+    stage = argv[1]  # the stage in which we are in
+    input_dir = argv[
+        2]  # The directory containing the CSV files of LEDA values
+    attack_dir = argv[
+        3]  # The directory containing the json files containing ISD attacks
+    # output_dir = argv[3]  # The directory containing the output CSV files
+    output_dir = os.path.join(f"{OUT_DIR}", "isd-leda", "values", f"S{stage}")
+    counter = get_pass_counter(output_dir)
+    _tmp = os.path.join(output_dir, f"{counter}_leda2attack")
+    if os.path.exists(_tmp):
+        print("path {_tmp} already existing")
+        # if the counter is X and there's X_leda2attack, it means we still didn't
+        # go beyond this pass, and we can use the same dir
+        pass
+    else:
+        counter += 1
+        _tmp = os.path.join(output_dir, f"{counter}_leda2attack")
+
     for level_idx, level in enumerate((1, 3, 5)):
-        filename_in = f"{OUT_DIR}/post_dfr_in/{ITERATION_IN}/cat_{level}_region"
+        filename_in = f"{input_dir}/cat_{level}_region"
+        # filename_in = f"{OUT_DIR}/post_dfr_in/{ITERATION_IN}/cat_{level}_region"
         leda_values = from_csv_to_ledavalue(f"{filename_in}.csv")
         c_lambda = AES_LAMBDAS[int(level_idx)]
         q_lambda = QAES_LAMBDAS[int(level_idx)]
-        filename_out = f"{OUT_DIR}/post_dfr_in/{ITERATION_IN}/cat_{level}_attacks"
+        # filename_out = f"{OUT_DIR}/post_dfr_in/{ITERATION_IN}/cat_{level}_attacks"
+        filename_out = os.path.join(_tmp, f"cat_{level}_attacks")
         csv_values = []
 
         for leda_val in leda_values:
@@ -57,6 +70,7 @@ def process():
             k = leda_val.p * (leda_val.n0 - 1)
             t = leda_val.t
             c_aes, q_aes, _ = check_dataset(
+                attack_dir,
                 n=n,
                 k=k,
                 t=t,
@@ -76,6 +90,7 @@ def process():
             k = leda_val.p * (leda_val.n0 - 1)  #
             t = leda_val.v * 2
             c_aes, q_aes, _ = check_dataset(
+                attack_dir,
                 n=n,
                 k=k,
                 t=t,
@@ -97,6 +112,7 @@ def process():
                 k = leda_val.p
                 t = leda_val.v * 2
                 c_aes, q_aes, _ = check_dataset(
+                attack_dir,
                     n=n,
                     k=k,
                     t=t,
@@ -119,6 +135,7 @@ def process():
             k = leda_val.p
             t = leda_val.v * leda_val.n0
             c_aes, q_aes, _ = check_dataset(
+                attack_dir,
                 n=n,
                 k=k,
                 t=t,
@@ -141,12 +158,11 @@ def process():
             csv_values.append(csv_value)
 
             write_to_csv(filename_out, csv_values)
+        set_pass_counter(output_dir, counter+1)
 
 
-def check_dataset(n, k, t, c_lambda, q_lambda, reduction, msg):
-    filename = os.path.join(OUT_DIR, "LT", "results", "json",
-                            "BJMM",
-                            f"{n:06}_{k:06}_{t:03}.json")
+def check_dataset(attack_dir, n, k, t, c_lambda, q_lambda, reduction, msg):
+    filename = os.path.join(attack_dir, f"{n:06}_{k:06}_{t:03}.json")
     print(filename)
     # continue exploring to find another minimum
     # filename = f"out/ledatools/json/{n:06}_{k:06}_{t:03}.json"
@@ -163,11 +179,6 @@ def check_dataset(n, k, t, c_lambda, q_lambda, reduction, msg):
     if c_time < .8 * c_lambda or q_time < .75 * q_lambda:
         less_than_threshold = True
     return c_time, q_time, less_than_threshold
-
-
-def main():
-    print("Processing merged values")
-    process()
 
 
 if __name__ == '__main__':
