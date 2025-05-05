@@ -168,8 +168,7 @@ def main():
         print(f"Saving leda vals to {filename}")
         save_ledavalues_to_csv(merged_leda_values[level_idx], filename)
 
-    filename = os.path.join(OUT_DIR, "isd-leda", "values",
-                            "exhaustive_generation", "isd_values")
+    filename = os.path.join(dirpath, "isd_values")
     isd_vals = sorted(set(isd_values))
     print(f"Saving isd vals to {filename}")
     save_to_json(filename, isd_vals, cls=ISDValueEncoder)
