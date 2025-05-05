@@ -145,6 +145,7 @@ def process():
 
 def check_dataset(n, k, t, c_lambda, q_lambda, reduction, msg):
     filename = os.path.join(OUT_DIR, "LT", "results", "json",
+                            "BJMM",
                             f"{n:06}_{k:06}_{t:03}.json")
     print(filename)
     # continue exploring to find another minimum
