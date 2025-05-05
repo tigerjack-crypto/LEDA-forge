@@ -92,17 +92,15 @@ def ledavalue_decoder(data):
 
 
 def save_ledavalues_to_csv(ledavalues: List[LEDAValue], csv_file: str):
-    # Get the field names from the ISDValue dataclass (excluding 'k')
-    fieldnames = ['n0', 'p', 'v', 't']
+    fieldnames = ['n0', 'p', 'v', 't', 'tau']
 
     with open(csv_file, 'w', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
 
-        for isdvalue in ledavalues:
-            # Convert each ISDValue instance to a dictionary
-            row = asdict(isdvalue)
-            # Serialize the 'msgs' list to a string
+        for val in ledavalues:
+            # Only include the fields we want
+            row = {field: getattr(val, field) for field in fieldnames}
             writer.writerow(row)
 
 
