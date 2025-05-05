@@ -44,6 +44,8 @@ def main():
     else:
         counter += 1
         _tmp = os.path.join(output_dir, f"{counter}_leda2attack")
+    if not os.path.exists(_tmp):
+        os.mkdir(_tmp)
 
     for level_idx, level in enumerate((1, 3, 5)):
         filename_in = f"{input_dir}/cat_{level}_region"
@@ -67,15 +69,16 @@ def main():
 
             # MRA
             isd_val = get_mra_from_leda(leda_val)
-            c_aes, q_aes, _ = check_dataset(
-                attack_dir,
-                n=isd_val.n,
-                k=isd_val.n - isd_val.r,
-                t=isd_val.t,
-                c_lambda=c_lambda,
-                q_lambda=q_lambda,
-                reduction=np.log2(leda_val.p) / 2,
-                msg=f"MRA, {leda_val.p} {leda_val.n0} {leda_val.v}")
+            try:
+                c_aes, q_aes, _ = check_dataset(
+                    attack_dir,
+                    isd_val,
+                    c_lambda=c_lambda,
+                    q_lambda=q_lambda,
+                    reduction=np.log2(leda_val.p) / 2,
+                    msg=f"MRA, {leda_val.p} {leda_val.n0} {leda_val.v}")
+            except FileNotFoundError:
+                print(f"File not found for {leda_val} and {isd_val}")
             assert c_aes is not None and q_aes is not None
             c_values.append(c_aes)
             q_values.append(q_aes)
@@ -85,16 +88,17 @@ def main():
 
             # KRA 1
             isd_val = get_kra1_from_leda(leda_val)
-            c_aes, q_aes, _ = check_dataset(
-                attack_dir,
-                n=isd_val.n,
-                k=isd_val.n - isd_val.r,
-                t=isd_val.t,
-                c_lambda=c_lambda,
-                q_lambda=q_lambda,
-                reduction=np.log2(leda_val.p) + np.log2(leda_val.n0) +
-                np.log2(leda_val.n0 - 1) - 1,
-                msg=f"KRA1, {leda_val.p} {leda_val.n0} {leda_val.v}")
+            try:
+                c_aes, q_aes, _ = check_dataset(
+                    attack_dir,
+                    isd_val,
+                    c_lambda=c_lambda,
+                    q_lambda=q_lambda,
+                    reduction=np.log2(leda_val.p) + np.log2(leda_val.n0) +
+                    np.log2(leda_val.n0 - 1) - 1,
+                    msg=f"KRA1, {leda_val.p} {leda_val.n0} {leda_val.v}")
+            except FileNotFoundError:
+                print(f"File not found for {leda_val} and {isd_val}")
             assert c_aes is not None and q_aes is not None
             c_values.append(c_aes)
             q_values.append(q_aes)
@@ -105,15 +109,16 @@ def main():
             # KRA 2
             if leda_val.n0 != 2:
                 isd_val = get_kra2_from_leda(leda_val)
-                c_aes, q_aes, _ = check_dataset(
-                attack_dir,
-                    n=isd_val.n,
-                    k=isd_val.n - isd_val.r,
-                    t=isd_val.t,
-                    c_lambda=c_lambda,
-                    q_lambda=q_lambda,
-                    reduction=np.log2(leda_val.p) + np.log2(leda_val.n0),
-                    msg=f"KRA2, {leda_val.p} {leda_val.n0} {leda_val.v}")
+                try:
+                    c_aes, q_aes, _ = check_dataset(
+                        attack_dir,
+                        isd_val,
+                        c_lambda=c_lambda,
+                        q_lambda=q_lambda,
+                        reduction=np.log2(leda_val.p) + np.log2(leda_val.n0),
+                        msg=f"KRA2, {leda_val.p} {leda_val.n0} {leda_val.v}")
+                except FileNotFoundError:
+                    print(f"File not found for {leda_val} and {isd_val}")
                 assert c_aes is not None and q_aes is not None
                 c_values.append(c_aes)
                 q_values.append(q_aes)
@@ -125,15 +130,16 @@ def main():
 
             # KRA 3
             isd_val = get_kra3_from_leda(leda_val)
-            c_aes, q_aes, _ = check_dataset(
-                attack_dir,
-                n=isd_val.n,
-                k=isd_val.n - isd_val.r,
-                t=isd_val.t,
-                c_lambda=c_lambda,
-                q_lambda=q_lambda,
-                reduction=np.log2(leda_val.p),
-                msg=f"KRA3, {leda_val.p} {leda_val.n0} {leda_val.v}")
+            try:
+                c_aes, q_aes, _ = check_dataset(
+                    attack_dir,
+                    isd_val,
+                    c_lambda=c_lambda,
+                    q_lambda=q_lambda,
+                    reduction=np.log2(leda_val.p),
+                    msg=f"KRA3, {leda_val.p} {leda_val.n0} {leda_val.v}")
+            except FileNotFoundError:
+                print(f"File not found for {leda_val} and {isd_val}")
             assert c_aes is not None and q_aes is not None
             c_values.append(c_aes)
             q_values.append(q_aes)
@@ -148,12 +154,14 @@ def main():
             csv_values.append(csv_value)
 
             write_to_csv(filename_out, csv_values)
-        set_pass_counter(output_dir, counter+1)
+        set_pass_counter(output_dir, counter + 1)
 
 
-def check_dataset(attack_dir, n, k, t, c_lambda, q_lambda, reduction, msg):
-    filename = os.path.join(attack_dir, f"{n:06}_{k:06}_{t:03}.json")
-    print(filename)
+def check_dataset(attack_dir, isd_val, c_lambda, q_lambda, reduction, msg):
+    filename = os.path.join(
+        attack_dir,
+        f"{isd_val.n:06}_{isd_val.n - isd_val.r:06}_{isd_val.t:03}.json")
+    # print(filename)
     # continue exploring to find another minimum
     # filename = f"out/ledatools/json/{n:06}_{k:06}_{t:03}.json"
     less_than_threshold = False
