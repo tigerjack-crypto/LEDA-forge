@@ -132,7 +132,7 @@ def get_qc_reduction_mra(leda_val):
 
 def get_qc_reduction_kra1(leda_val):
     return np.log2(leda_val.p) + np.log2(
-        leda_val.n0) + np.log2(leda_val.n0 - 1) - 1,
+        leda_val.n0) + np.log2(leda_val.n0 - 1) - 1
 
 
 def get_qc_reduction_kra2(leda_val):
