@@ -33,7 +33,12 @@ def check_dataset(attack_dir, isd_val, c_lambda, q_lambda, reduction, msg):
     # continue exploring to find another minimum
     # filename = f"out/ledatools/json/{n:06}_{k:06}_{t:03}.json"
     less_than_threshold = False
-    data = load_from_json(filename)
+    try:
+        data = load_from_json(filename)
+    except:
+        print(filename)
+        return 0, 0, 0
+
 
     c_time = data['Classic']['Plain']['value'] - reduction
     q_time = (data['Quantum']['Plain']['value']) * 2 - reduction
