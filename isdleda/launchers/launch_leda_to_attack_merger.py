@@ -62,14 +62,7 @@ def main():
     output_dir = os.path.join(f"{OUT_DIR}", "isd-leda", "values", f"S{stage}")
     counter = get_pass_counter(output_dir)
     _tmp = os.path.join(output_dir, f"{counter}_leda2attack")
-    if os.path.exists(_tmp):
-        print("path {_tmp} already existing")
-        # if the counter is X and there's X_leda2attack, it means we still didn't
-        # go beyond this pass, and we can use the same dir
-        pass
-    else:
-        counter += 1
-        _tmp = os.path.join(output_dir, f"{counter}_leda2attack")
+    # _was_existing = False
     if not os.path.exists(_tmp):
         os.mkdir(_tmp)
 
