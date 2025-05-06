@@ -7,7 +7,7 @@ from sys import argv
 # from typing import Set
 
 import numpy as np
-from isdleda.launchers.launcher_utils import AES_LAMBDAS, OUT_DIR, QAES_LAMBDAS, get_kra1_from_leda, get_kra2_from_leda, get_kra3_from_leda, get_mra_from_leda, get_pass_counter, set_pass_counter
+from isdleda.launchers.launcher_utils import AES_LAMBDAS, OUT_DIR, QAES_LAMBDAS, get_kra1_from_leda, get_kra2_from_leda, get_kra3_from_leda, get_mra_from_leda, get_pass_counter, get_qc_reduction_mra, get_qc_reduction_kra1, get_qc_reduction_kra2, get_qc_reduction_kra3, set_pass_counter
 # from isdleda.utils.common import ISDValue
 from isdleda.utils.export.export import (
     from_csv_to_ledavalue,
@@ -26,13 +26,35 @@ def write_to_csv(filename, values):
         writer.writerows(values)
 
 
+def check_dataset(attack_dir, isd_val, c_lambda, q_lambda, reduction, msg):
+    filename = os.path.join(
+        attack_dir,
+        f"{isd_val.n:06}_{isd_val.n - isd_val.r:06}_{isd_val.t:03}.json")
+    # print(filename)
+    # continue exploring to find another minimum
+    # filename = f"out/ledatools/json/{n:06}_{k:06}_{t:03}.json"
+    less_than_threshold = False
+    data = load_from_json(filename)
+
+    c_time = data['Classic']['Plain']['value'] - reduction
+    q_time = (data['Quantum']['Plain']['value']) * 2 - reduction
+    if c_time < 0 or q_time < 0:
+        print(f"{msg}")
+        raise Exception(
+            f"Value less than 0 for {filename}, with reduction {reduction}: {c_time}, {q_time}"
+        )
+    if c_time < .8 * c_lambda or q_time < .75 * q_lambda:
+        less_than_threshold = True
+    return c_time, q_time, less_than_threshold
+
+
 def main():
-    stage = argv[1]  # the stage in which we are in
-    input_dir = argv[
-        2]  # The directory containing the CSV files of LEDA values
-    attack_dir = argv[
-        3]  # The directory containing the json files containing ISD attacks
-    # output_dir = argv[3]  # The directory containing the output CSV files
+    # the stage in which we are in
+    stage = argv[1]
+    # The directory containing the CSV files of LEDA values
+    input_dir = argv[2]
+    # The directory containing the json files containing ISD attacksk_dir = argv[
+    attack_dir = argv[3]
     output_dir = os.path.join(f"{OUT_DIR}", "isd-leda", "values", f"S{stage}")
     counter = get_pass_counter(output_dir)
     _tmp = os.path.join(output_dir, f"{counter}_leda2attack")
@@ -46,6 +68,8 @@ def main():
         _tmp = os.path.join(output_dir, f"{counter}_leda2attack")
     if not os.path.exists(_tmp):
         os.mkdir(_tmp)
+
+    missing_counter = 0
 
     for level_idx, level in enumerate((1, 3, 5)):
         filename_in = f"{input_dir}/cat_{level}_region"
@@ -75,9 +99,10 @@ def main():
                     isd_val,
                     c_lambda=c_lambda,
                     q_lambda=q_lambda,
-                    reduction=np.log2(leda_val.p) / 2,
+                    reduction=get_qc_reduction_mra(leda_val),
                     msg=f"MRA, {leda_val.p} {leda_val.n0} {leda_val.v}")
             except FileNotFoundError:
+                missing_counter += 1
                 print(f"File not found for {leda_val} and {isd_val}")
             assert c_aes is not None and q_aes is not None
             c_values.append(c_aes)
@@ -94,10 +119,10 @@ def main():
                     isd_val,
                     c_lambda=c_lambda,
                     q_lambda=q_lambda,
-                    reduction=np.log2(leda_val.p) + np.log2(leda_val.n0) +
-                    np.log2(leda_val.n0 - 1) - 1,
+                    reduction=get_qc_reduction_kra1(leda_val),
                     msg=f"KRA1, {leda_val.p} {leda_val.n0} {leda_val.v}")
             except FileNotFoundError:
+                missing_counter += 1
                 print(f"File not found for {leda_val} and {isd_val}")
             assert c_aes is not None and q_aes is not None
             c_values.append(c_aes)
@@ -115,9 +140,10 @@ def main():
                         isd_val,
                         c_lambda=c_lambda,
                         q_lambda=q_lambda,
-                        reduction=np.log2(leda_val.p) + np.log2(leda_val.n0),
+                        reduction=get_qc_reduction_kra2(leda_val),
                         msg=f"KRA2, {leda_val.p} {leda_val.n0} {leda_val.v}")
                 except FileNotFoundError:
+                    missing_counter += 1
                     print(f"File not found for {leda_val} and {isd_val}")
                 assert c_aes is not None and q_aes is not None
                 c_values.append(c_aes)
@@ -136,9 +162,10 @@ def main():
                     isd_val,
                     c_lambda=c_lambda,
                     q_lambda=q_lambda,
-                    reduction=np.log2(leda_val.p),
+                    reduction=get_qc_reduction_kra3(leda_val),
                     msg=f"KRA3, {leda_val.p} {leda_val.n0} {leda_val.v}")
             except FileNotFoundError:
+                missing_counter += 1
                 print(f"File not found for {leda_val} and {isd_val}")
             assert c_aes is not None and q_aes is not None
             c_values.append(c_aes)
@@ -155,28 +182,7 @@ def main():
 
             write_to_csv(filename_out, csv_values)
         set_pass_counter(output_dir, counter + 1)
-
-
-def check_dataset(attack_dir, isd_val, c_lambda, q_lambda, reduction, msg):
-    filename = os.path.join(
-        attack_dir,
-        f"{isd_val.n:06}_{isd_val.n - isd_val.r:06}_{isd_val.t:03}.json")
-    # print(filename)
-    # continue exploring to find another minimum
-    # filename = f"out/ledatools/json/{n:06}_{k:06}_{t:03}.json"
-    less_than_threshold = False
-    data = load_from_json(filename)
-
-    c_time = data['Classic']['Plain']['value'] - reduction
-    q_time = (data['Quantum']['Plain']['value']) * 2 - reduction
-    if c_time < 0 or q_time < 0:
-        print(f"{msg}")
-        raise Exception(
-            f"Value less than 0 for {filename}, with reduction {reduction}: {c_time}, {q_time}"
-        )
-    if c_time < .8 * c_lambda or q_time < .75 * q_lambda:
-        less_than_threshold = True
-    return c_time, q_time, less_than_threshold
+        print(f"{missing_counter} files missing")
 
 
 if __name__ == '__main__':

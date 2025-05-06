@@ -1,5 +1,6 @@
 import argparse
 import logging
+import numpy as np
 import os
 import csv
 from enum import IntEnum
@@ -7,7 +8,7 @@ from typing import Optional, List
 
 from isdleda.utils.common import ISDValue
 
-OUT_DIR=os.path.join("..", "leda_design", "stime_ISD")
+OUT_DIR = os.path.join("..", "leda_design", "stime_ISD")
 
 # Official levels
 LEVELS = (128, 192, 256)
@@ -47,11 +48,13 @@ def get_pass_counter(dir_path: str) -> int:
 
     return current_pass
 
+
 def set_pass_counter(dir_path: str, value: int):
     counter_file = os.path.join(dir_path, "counter.txt")
 
     with open(counter_file, 'w') as f:
         f.write(f"{value}")
+
 
 def get_no_of_files(directory: str, out_format: str):
     total = 0
@@ -94,27 +97,48 @@ def get_proper_leda_primes() -> List[int]:
             proper_primes = list(map(int, row))
     return proper_primes
 
+
 def get_mra_from_leda(leda_val):
     n = leda_val.p * leda_val.n0
     k = leda_val.p * (leda_val.n0 - 1)
     t = leda_val.t
-    return ISDValue(n, n-k, t, msgs=[f"MRA"])
+    return ISDValue(n, n - k, t, msgs=[f"MRA"])
+
 
 def get_kra1_from_leda(leda_val):
     n = leda_val.p * leda_val.n0  #
     k = leda_val.p * (leda_val.n0 - 1)  #
     t = leda_val.v * 2
-    return ISDValue(n, n-k, t, msgs=[f"KRA1"])
+    return ISDValue(n, n - k, t, msgs=[f"KRA1"])
+
 
 def get_kra2_from_leda(leda_val):
     n = 2 * leda_val.p
     k = leda_val.p
     t = leda_val.v * 2
-    return ISDValue(n, n-k, t, msgs=[f"KRA2"])
+    return ISDValue(n, n - k, t, msgs=[f"KRA2"])
 
 
 def get_kra3_from_leda(leda_val):
     n = leda_val.p * leda_val.n0
     k = leda_val.p
     t = leda_val.v * leda_val.n0
-    return ISDValue(n, n-k, t, msgs=[f"KRA3"])
+    return ISDValue(n, n - k, t, msgs=[f"KRA3"])
+
+
+def get_qc_reduction_mra(leda_val):
+    return np.log2(leda_val.p) / 2
+
+
+def get_qc_reduction_kra1(leda_val):
+    return np.log2(leda_val.p) + np.log2(
+        leda_val.n0) + np.log2(leda_val.n0 - 1) - 1,
+
+
+def get_qc_reduction_kra2(leda_val):
+    return np.log2(leda_val.p) + np.log2(leda_val.n0)
+
+
+def get_qc_reduction_kra3(leda_val):
+    return np.log2(leda_val.p)
+
