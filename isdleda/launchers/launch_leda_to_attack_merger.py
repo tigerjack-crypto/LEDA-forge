@@ -1,5 +1,4 @@
-"""It's just the restriction routine, but tailored for the new data format.
-It should be merged with the restriction one.
+"""
 """
 import csv
 import os
@@ -180,9 +179,9 @@ def main():
             csv_value.append(min_q)
             csv_values.append(csv_value)
 
-            write_to_csv(filename_out, csv_values)
-        set_pass_counter(output_dir, counter + 1)
-        print(f"{missing_counter} files missing")
+        write_to_csv(filename_out, csv_values)
+    set_pass_counter(output_dir, counter + 1)
+    print(f"{missing_counter} files missing")
 
 
 if __name__ == '__main__':
