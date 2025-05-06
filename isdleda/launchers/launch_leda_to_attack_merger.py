@@ -1,4 +1,4 @@
-"""
+"""Add c_time and q_time to LEDA parameters (p, n0, v, t).
 """
 import csv
 import os
