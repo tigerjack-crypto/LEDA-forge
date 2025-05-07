@@ -1,6 +1,8 @@
 # Other
 - submodules/
 - out/
+- *.csv
+- *.json
 
 # Exclude log and temp
 - *.log
