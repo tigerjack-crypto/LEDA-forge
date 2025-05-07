@@ -162,6 +162,17 @@ def main():
     args = [(leda_primes, c_lambda)
             for c_lambda in LEVELS]
 
+    dirpath = os.path.join(
+        OUT_DIR,
+        "isd-leda",
+        "values",
+        f"S{stage}",
+        "0_exhaustive_generation",
+    )
+    if not os.path.exists(dirpath):
+        os.mkdir(dirpath)
+    print(f"Results will be in {dirpath}")
+
     with Pool() as pool:
         results = pool.starmap(worker, args)
 
@@ -170,13 +181,6 @@ def main():
         leda_values_v_by_level[idx] = leda_v
 
     print("Exhaustive generation over")
-    dirpath = os.path.join(
-        OUT_DIR,
-        "isd-leda",
-        "values",
-        f"S{stage}",
-        "0_exhaustive_generation",
-    )
     levels = [1, 3, 5]
     merged_leda_values = merge_leda_values(leda_values_t_by_level,
                                            leda_values_v_by_level)
