@@ -84,7 +84,7 @@ def main():
                 c = -np.log2(1 - k / n)
                 c_lambda_expected = c_lambda - 3 * np.log2(r)
                 tmin = int(np.floor(.6 * c_lambda_expected / c))
-                tmax = int(np.ceil(1.2 * c_lambda_expected / c))
+                tmax = int(np.ceil(1.8 * c_lambda_expected / c))
 
                 for t in range(tmin, tmax, 1):
                     leda_val = LEDAValue(prime, n0, t, -1, msgs=[f"MRA"])
@@ -101,7 +101,7 @@ def main():
                 c_lambda_expected = c_lambda - 3 * np.log2(r)
 
                 vmin = int(np.floor(.6 * c_lambda_expected / (2 * c)))
-                vmax = int(np.ceil(1.2 * c_lambda_expected / (2 * c)))
+                vmax = int(np.ceil(1.8 * c_lambda_expected / (2 * c)))
                 if vmin % 2 == 0:
                     vmin -= 1
                 if vmax % 2 == 0:
@@ -122,7 +122,7 @@ def main():
                     c_lambda_expected = c_lambda - 3 * np.log2(r)
 
                     vmin = int(np.floor(.6 * c_lambda_expected / (2 * c)))
-                    vmax = int(np.ceil(1.2 * c_lambda_expected / (2 * c)))
+                    vmax = int(np.ceil(1.8 * c_lambda_expected / (2 * c)))
                     if vmin % 2 == 0:
                         vmin -= 1
                     if vmax % 2 == 0:
@@ -142,7 +142,7 @@ def main():
                 c = -np.log2(1 - k / n)
                 c_lambda_expected = c_lambda - 3 * np.log2(r)
                 vmin = int(np.floor(.6 * c_lambda_expected / (n0 * c)))
-                vmax = int(np.ceil(1.2 * c_lambda_expected / (n0 * c)))
+                vmax = int(np.ceil(1.8 * c_lambda_expected / (n0 * c)))
                 if vmin % 2 == 0:
                     vmin -= 1
                 if vmax % 2 == 0:
@@ -153,6 +153,7 @@ def main():
                         leda_val)
                     isd_values.append(get_kra3_from_leda(leda_val))
 
+    print("Exhaustive generation over")
     dirpath = os.path.join(
         OUT_DIR,
         "isd-leda",
@@ -163,6 +164,7 @@ def main():
     levels = [1, 3, 5]
     merged_leda_values = merge_leda_values(leda_values_t_by_level,
                                            leda_values_v_by_level)
+    print("Merging over")
     for level_idx, _ in enumerate(LEVELS):
         filename = os.path.join(dirpath, f"cat_{levels[level_idx]}_region.csv")
         print(f"Saving leda vals to {filename}")
