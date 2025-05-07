@@ -35,7 +35,7 @@ def check_dataset(attack_dir, isd_val, reduction, msg):
     try:
         data = load_from_json(filename)
     except:
-        print(filename)
+        print(f"{filename} not found")
         return 0, 0
 
     c_time = data['Classic']['Plain']['value'] - reduction
