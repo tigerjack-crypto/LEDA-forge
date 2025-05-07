@@ -57,6 +57,7 @@ def main():
     attack_dir = argv[3]
     # if to check for the threshold, boolean
     check_threshold = bool(argv[4])
+    print(f"stage {stage}, check_threshold {check_threshold}")
 
     output_dir = os.path.join(f"{OUT_DIR}", "isd-leda", "values", f"S{stage}")
     counter = get_pass_counter(output_dir)
@@ -71,6 +72,7 @@ def main():
         filename_in = f"{input_dir}/cat_{level}_region"
         # filename_in = f"{OUT_DIR}/post_dfr_in/{ITERATION_IN}/cat_{level}_region"
         leda_values = from_csv_to_ledavalue(f"{filename_in}.csv")
+        print(f"found {len(leda_values)} in {filename_in}")
         c_lambda = AES_LAMBDAS[int(level_idx)]
         q_lambda = QAES_LAMBDAS[int(level_idx)]
         # filename_out = f"{OUT_DIR}/post_dfr_in/{ITERATION_IN}/cat_{level}_attacks"
@@ -84,8 +86,8 @@ def main():
             csv_value = []
             csv_value.append(leda_val.n0)
             csv_value.append(leda_val.p)
-            csv_value.append(leda_val.v)
             csv_value.append(leda_val.t)
+            csv_value.append(leda_val.v)
 
             # MRA
             isd_val = get_mra_from_leda(leda_val)
