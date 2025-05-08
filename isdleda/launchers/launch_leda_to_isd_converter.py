@@ -22,7 +22,7 @@ def worker(level, input_dir):
     print(f"Found {len(ledavalues)} in {filename}")
 
     for i, leda_val in enumerate(ledavalues):
-        if i % 12345 == 0:
+        if i % 123456 == 0:
             print(f"Level {level}: Processed {i} ledavals")
         isd_values.append(get_mra_from_leda(leda_val))
         isd_values.append(get_kra1_from_leda(leda_val))
@@ -32,7 +32,7 @@ def worker(level, input_dir):
             isd_values.append(get_kra2_from_leda(leda_val))
         isd_values.append(get_kra3_from_leda(leda_val))
     print(f"Level {level}: Finished worker")
-    return isd_values
+    return list(set(isd_values))
 
 
 def get_output_filename(output_dir, counter):
