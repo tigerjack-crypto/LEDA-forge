@@ -3,15 +3,17 @@
 import csv
 import os
 from sys import argv
-# from typing import Set
 
 import numpy as np
-from isdleda.launchers.launcher_utils import AES_LAMBDAS, OUT_DIR, QAES_LAMBDAS, get_kra1_from_leda, get_kra2_from_leda, get_kra3_from_leda, get_mra_from_leda, get_pass_counter, get_qc_reduction_mra, get_qc_reduction_kra1, get_qc_reduction_kra2, get_qc_reduction_kra3, set_pass_counter
+from isdleda.launchers.launcher_utils import (
+    AES_LAMBDAS, OUT_DIR, QAES_LAMBDAS, get_kra1_from_leda, get_kra2_from_leda,
+    get_kra3_from_leda, get_mra_from_leda, get_pass_counter,
+    get_qc_reduction_kra1, get_qc_reduction_kra2, get_qc_reduction_kra3,
+    get_qc_reduction_mra, set_pass_counter)
 # from isdleda.utils.common import ISDValue
-from isdleda.utils.export.export import (
-    from_csv_to_ledavalue,
-    load_from_json,
-)
+from isdleda.utils.export.export import from_csv_to_ledavalue, load_from_json
+
+# from typing import Set
 
 
 def write_to_csv(filename, values):
@@ -65,6 +67,7 @@ def main():
     # _was_existing = False
     if not os.path.exists(_tmp):
         os.mkdir(_tmp)
+    print(f"output dir will be {_tmp}")
 
     missing_counter = 0
 
@@ -166,7 +169,8 @@ def main():
             # min c, min q, min c attack, min q attack
             min_c = min(c_values)
             min_q = min(q_values)
-            if check_threshold and (min_c > .75 * c_lambda or min_q > .75 * q_lambda):
+            if check_threshold and (min_c > .75 * c_lambda
+                                    or min_q > .75 * q_lambda):
                 csv_value.append(min_c)
                 csv_value.append(min_q)
                 csv_values.append(csv_value)
