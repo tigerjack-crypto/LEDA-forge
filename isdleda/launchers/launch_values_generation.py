@@ -83,12 +83,10 @@ def worker(leda_primes, level_idx, c_lambda):
 
     for prime in filter(lambda p: 5e3 < p < 9e4, leda_primes):
         for n0 in range(2, 6):
-            # MRA, KRA1, 2, 3
-
             n = prime * n0
             if n > 2e5:
                 continue
-            # MRA, KRA1, KRA2, KRA3
+            # MRA
             r = prime
             k = n - r
             c = -np.log2(1 - k / n)
@@ -118,7 +116,7 @@ def worker(leda_primes, level_idx, c_lambda):
                 leda_val = LEDAValue(prime, n0, -1, v, msgs=[f"KRA 1"])
                 leda_values_v[f"{prime}_{n0}"].add(leda_val)
                 # isd_values.append(get_kra1_from_leda(leda_val))
-            del n, k, r, c, c_lambda_expected, v, leda_val
+            del n, k, r, c, c_lambda_expected, v
 
             # KRA2
             if n0 != 2:
@@ -167,7 +165,7 @@ def main():
     leda_values_v_by_level: Dict[int, Dict[str, Set[LEDAValue]]] = defaultdict(
         lambda: defaultdict(set))
 
-    args = [(leda_primes, (level_idx, c_lambda))
+    args = [(leda_primes, level_idx, c_lambda)
             for level_idx, c_lambda in enumerate(LEVELS)]
 
     dirpath = os.path.join(
