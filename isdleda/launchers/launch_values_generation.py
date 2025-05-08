@@ -58,8 +58,25 @@ def merge_leda_values(
 
     return merged
 
+def check_vs(level_idx, vmin, vmax):
+    if level_idx == 0:
+        if vmin < 31:
+            vmin = 31
+    elif level_idx == 1:
+        if vmin < 51:
+            vmin = 51
+    elif level_idx == 2:
+        if vmin < 75:
+            vmin = 75
 
-def worker(leda_primes, c_lambda):
+    if vmin % 2 == 0:
+        vmin -= 1
+    if vmax % 2 == 0:
+        vmax += 1
+    return vmin, vmax
+
+
+def worker(leda_primes, level_idx, c_lambda):
     # level -> p_n0; all values have t != -1, v == -1
     leda_values_v: Dict[str, Set[LEDAValue]] = defaultdict(set)
     leda_values_t: Dict[str, Set[LEDAValue]] = defaultdict(set)
@@ -76,7 +93,7 @@ def worker(leda_primes, c_lambda):
             k = n - r
             c = -np.log2(1 - k / n)
             c_lambda_expected = c_lambda - 3 * np.log2(r)
-            tmin = int(np.floor(0.6 * c_lambda_expected / c))
+            tmin = int(np.floor(0.8 * c_lambda_expected / c))
             tmax = int(np.ceil(1.7 * c_lambda_expected / c))
 
             for t in range(tmin, tmax, 1):
@@ -92,12 +109,9 @@ def worker(leda_primes, c_lambda):
             c = -np.log2(1 - k / n)
             c_lambda_expected = c_lambda - 3 * np.log2(r)
 
-            vmin = int(np.floor(0.6 * c_lambda_expected / (2 * c)))
+            vmin = int(np.floor(0.8 * c_lambda_expected / (2 * c)))
             vmax = int(np.ceil(1.7 * c_lambda_expected / (2 * c)))
-            if vmin % 2 == 0:
-                vmin -= 1
-            if vmax % 2 == 0:
-                vmax += 1
+            vmin, vmax = check_vs(level_idx, vmin, vmax)
             for v in range(vmin, vmax, 2):
                 if v % 2 == 0:
                     print(f"KRA1, v is {v}")
@@ -114,12 +128,9 @@ def worker(leda_primes, c_lambda):
                 c = -np.log2(1 - k / n)
                 c_lambda_expected = c_lambda - 3 * np.log2(r)
 
-                vmin = int(np.floor(0.6 * c_lambda_expected / (2 * c)))
+                vmin = int(np.floor(0.8 * c_lambda_expected / (2 * c)))
                 vmax = int(np.ceil(1.7 * c_lambda_expected / (2 * c)))
-                if vmin % 2 == 0:
-                    vmin -= 1
-                if vmax % 2 == 0:
-                    vmax += 1
+                vmin, vmax = check_vs(level_idx, vmin, vmax)
                 for v in range(vmin, vmax, 2):
                     if v % 2 == 0:
                         print(f"KRA2, v is {v}")
@@ -135,12 +146,9 @@ def worker(leda_primes, c_lambda):
             k = n - r
             c = -np.log2(1 - k / n)
             c_lambda_expected = c_lambda - 3 * np.log2(r)
-            vmin = int(np.floor(0.6 * c_lambda_expected / (n0 * c)))
+            vmin = int(np.floor(0.8 * c_lambda_expected / (n0 * c)))
             vmax = int(np.ceil(1.7 * c_lambda_expected / (n0 * c)))
-            if vmin % 2 == 0:
-                vmin -= 1
-            if vmax % 2 == 0:
-                vmax += 1
+            vmin, vmax = check_vs(level_idx, vmin, vmax)
             for v in range(vmin, vmax, 2):
                 if v % 2 == 0:
                     print(f"KRA3, v is {v}")
@@ -159,8 +167,8 @@ def main():
     leda_values_v_by_level: Dict[int, Dict[str, Set[LEDAValue]]] = defaultdict(
         lambda: defaultdict(set))
 
-    args = [(leda_primes, c_lambda)
-            for c_lambda in LEVELS]
+    args = [(leda_primes, (level_idx, c_lambda))
+            for level_idx, c_lambda in enumerate(LEVELS)]
 
     dirpath = os.path.join(
         OUT_DIR,
