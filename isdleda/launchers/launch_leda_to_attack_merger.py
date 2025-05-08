@@ -29,8 +29,7 @@ def write_to_csv(filename, values):
 
 def check_dataset(attack_dir, isd_val, reduction, msg):
     filename = os.path.join(
-        attack_dir,
-        f"{isd_val.n:06}_{isd_val.n - isd_val.r:06}_{isd_val.t:03}.json")
+        attack_dir, f"{isd_val.n:06}_{isd_val.k:06}_{isd_val.w:03}.json")
     # print(filename)
     # continue exploring to find another minimum
     # filename = f"out/ledatools/json/{n:06}_{k:06}_{t:03}.json"

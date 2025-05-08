@@ -14,7 +14,8 @@ class Attacks(StrEnum):
 @dataclass(eq=True, frozen=True, order=True)
 class ISDValue:
     n: int
-    r: int
+    # r: int
+    k: int
     t: int
     # k: int = field(init=False, compare=False)
     msgs: List[str] = field(default_factory=list, compare=False)

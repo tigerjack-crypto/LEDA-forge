@@ -92,7 +92,7 @@ def ledavalue_decoder(data):
 
 
 def save_ledavalues_to_csv(ledavalues: List[LEDAValue], csv_file: str):
-    fieldnames = ['n0', 'p', 'v', 't', 'tau']
+    fieldnames = ['n0', 'p', 't', 'v', 'tau']
 
     with open(csv_file, 'w', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -114,7 +114,7 @@ class ISDValueEncoder(json.JSONEncoder):
 
 def save_isdvalues_to_csv(isdvalues: List[ISDValue], csv_file: str):
     # Get the field names from the ISDValue dataclass (excluding 'k')
-    fieldnames = ['n', 'r', 't']
+    fieldnames = ['n', 'k', 't']
 
     with open(csv_file, 'w', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -143,11 +143,11 @@ def from_csv_to_isdvalue(csv_path: str) -> List[ISDValue]:
         reader = csv.DictReader(csvfile)
         for row in reader:
             n = int(row['n'])
-            r = int(row['r'])
+            k = int(row['k'])
             t = int(row['t'])
             msgs = row.get('msgs', '')
             msgs_list = [msg.strip() for msg in msgs.split(';') if msg.strip()]
-            result.append(ISDValue(n=n, r=r, t=t, msgs=msgs_list))
+            result.append(ISDValue(n=n, k=k, t=t, msgs=msgs_list))
     return result
 
 def from_csv_to_ledavalue(csv_path: str) -> List[LEDAValue]:
