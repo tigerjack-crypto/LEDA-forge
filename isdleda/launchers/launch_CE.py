@@ -129,7 +129,6 @@ def isd_compute(arg, out_type: str, file_ext: str):
             results['params'] = {
                 'n': value.n,
                 'k': value.k,
-                'k': value.k,
                 'w': value.w,
                 'mem': mem_access.name
             }
