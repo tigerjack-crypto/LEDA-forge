@@ -10,13 +10,12 @@ class Attacks(StrEnum):
     MsgR = auto()
 
 
-# TODO change to n, k, t
 @dataclass(eq=True, frozen=True, order=True)
 class ISDValue:
     n: int
     # r: int
     k: int
-    t: int
+    w: int
     # k: int = field(init=False, compare=False)
     msgs: List[str] = field(default_factory=list, compare=False)
 
