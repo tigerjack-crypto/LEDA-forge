@@ -1,6 +1,10 @@
 [submodule "submodules/cryptographic_estimators"]
 	path = submodules/cryptographic_estimators
 	url = https://github.com/Crypto-TII/CryptographicEstimators.git
-[submodule "submodules/isd_scripts"]
-	path = submodules/isd_scripts
-	url = git@github.com:tigerjack/2019-ISD-scripts
+[submodule "LEDAtools"]
+	path = submodules/LEDATools
+	url = https://github.com/tigerjack-crypto/LEDAtools
+[submodule "submodules/CryptAttackTester"]
+    path = submodules/CryptAttackTester
+    url = keybase://private/tigerjack/crypto_cat_mods
+

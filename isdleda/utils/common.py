@@ -10,7 +10,6 @@ class Attacks(StrEnum):
     MsgR = auto()
 
 
-# TODO change to n, k, t
 @dataclass(eq=True, frozen=True, order=True)
 class ISDValue:
     n: int
