@@ -8,8 +8,6 @@ from typing import Optional, List
 
 from isdleda.utils.common import ISDValue
 
-OUT_DIR = os.path.join("..", "leda_design", "stime_ISD")
-
 # Official levels
 LEVELS = (128, 192, 256)
 # Official NIST values

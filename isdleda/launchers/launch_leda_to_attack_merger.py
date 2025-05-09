@@ -6,11 +6,12 @@ from sys import argv
 
 import numpy as np
 from isdleda.launchers.launcher_utils import (
-    AES_LAMBDAS, OUT_DIR, QAES_LAMBDAS, get_kra1_from_leda, get_kra2_from_leda,
+    AES_LAMBDAS, QAES_LAMBDAS, get_kra1_from_leda, get_kra2_from_leda,
     get_kra3_from_leda, get_mra_from_leda, get_pass_counter,
     get_qc_reduction_kra1, get_qc_reduction_kra2, get_qc_reduction_kra3,
     get_qc_reduction_mra, set_pass_counter)
 from isdleda.utils.common import ISDValue
+from isdleda.utils.paths import OUT_DIR
 from isdleda.utils.export.export import from_csv_to_ledavalue, load_from_json
 
 # from typing import Set

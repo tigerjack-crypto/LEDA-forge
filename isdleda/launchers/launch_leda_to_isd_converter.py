@@ -6,8 +6,9 @@ from sys import argv
 from typing import List
 
 from isdleda.launchers.launcher_utils import (
-    OUT_DIR, get_kra1_from_leda, get_kra2_from_leda, get_kra3_from_leda,
+    get_kra1_from_leda, get_kra2_from_leda, get_kra3_from_leda,
     get_mra_from_leda, get_pass_counter, set_pass_counter)
+from isdleda.utils.paths import OUT_DIR
 from isdleda.utils.common import ISDValue
 from isdleda.utils.export.export import (ISDValueEncoder,
                                          from_csv_to_ledavalue, save_to_json)

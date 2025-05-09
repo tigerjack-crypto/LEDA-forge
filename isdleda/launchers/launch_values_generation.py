@@ -12,8 +12,9 @@ from sys import argv
 from typing import Dict, List, Set
 
 import numpy as np
-from isdleda.launchers.launcher_utils import (LEVELS, OUT_DIR,
+from isdleda.launchers.launcher_utils import (LEVELS,
                                               get_proper_leda_primes)
+from isdleda.utils.paths import OUT_DIR
 from isdleda.utils.common import LEDAValue
 from isdleda.utils.export.export import save_ledavalues_to_csv
 

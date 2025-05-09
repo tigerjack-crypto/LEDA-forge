@@ -20,12 +20,13 @@ from cryptographic_estimators.SDEstimator import (BJMM, BallCollision, BJMMdw,
 from isdleda.launchers.launcher_utils import (MemAccess,
                                               argparse_check_positive,
                                               get_no_of_files, init_logger)
+from isdleda.utils.paths import OUT_DIR, OUT_FILES_PART_FMT
 from isdleda.utils.common import ISDValue, dict_to_isd_value
 from isdleda.utils.export.export import (load_from_json, save_to_json,
                                          save_to_pickle)
-# ISD_VALUES_FILE_JSON, 
-from isdleda.utils.paths import (OUT_FILES_CEB_FMT,
-                                 OUT_FILES_CEB_TYPE_DIR)
+OUT_FILES_CEB_TYPE_DIR: str = os.path.join(OUT_DIR, "CE", "{out_type}")
+OUT_FILES_CEB_DIR: str = os.path.join(OUT_FILES_CEB_TYPE_DIR, "{memaccess}")
+OUT_FILES_CEB_FMT: str = os.path.join(OUT_FILES_CEB_DIR, OUT_FILES_PART_FMT)
 
 LOGGER = logging.getLogger(__name__)
 LOG_DIR = "logs"
