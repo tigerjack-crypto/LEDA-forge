@@ -86,7 +86,7 @@ def _group_by_n_k(values: Iterable[ISDValue]):
     for value in values:
         key = hash(str(value.n) + '|' + str(value.k))
         values_dict[key].append(value)
-    LOGGER.info("Finished grouping by n and r")
+    LOGGER.info("Finished grouping by n and k")
     return values_dict
 
 
@@ -114,7 +114,7 @@ def isd_compute(arg, out_type: str, file_ext: str):
                                                 out_type=out_type,
                                                 n=value.n,
                                                 k=value.k,
-                                                t=value.w,
+                                                w=value.w,
                                                 ext=file_ext)
             sd = SDEstimator(value.n,
                              value.k,
