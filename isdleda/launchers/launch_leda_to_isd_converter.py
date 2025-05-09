@@ -42,7 +42,6 @@ def get_output_filename(output_dir, counter):
         # if the counter is X and there's X_leda2isd, it means we still didn't
         # go beyond this iteration, and we can use the same dir
     else:
-        counter += 1
         _tmp = os.path.join(output_dir, f"{counter}_leda2isd")
     if not os.path.exists(_tmp):
         os.mkdir(_tmp)
@@ -71,7 +70,7 @@ def main():
     filename = os.path.join(_tmp, "isd_values.json")
     print(f"Output file {filename}")
     save_to_json(filename, isd_vals, cls=ISDValueEncoder)
-    set_pass_counter(output_dir, counter)
+    set_pass_counter(output_dir, counter + 1)
 
 
 if __name__ == '__main__':
