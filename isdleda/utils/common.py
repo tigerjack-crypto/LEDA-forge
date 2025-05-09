@@ -16,14 +16,14 @@ class ISDValue:
     n: int
     # r: int
     k: int
-    t: int
+    w: int
     # k: int = field(init=False, compare=False)
     msgs: List[str] = field(default_factory=list, compare=False)
 
 
 # especially useful for json
 def dict_to_isd_value(dct):
-    if 'n' in dct and 'r' in dct and 't' in dct:
+    if 'n' in dct and 'k' in dct and 'w' in dct:
         return ISDValue(**dct)
     raise Exception("Wrong dictionary for ISDValue")
 
