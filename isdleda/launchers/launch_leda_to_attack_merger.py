@@ -10,7 +10,7 @@ from isdleda.launchers.launcher_utils import (
     get_kra3_from_leda, get_mra_from_leda, get_pass_counter,
     get_qc_reduction_kra1, get_qc_reduction_kra2, get_qc_reduction_kra3,
     get_qc_reduction_mra, set_pass_counter)
-# from isdleda.utils.common import ISDValue
+from isdleda.utils.common import ISDValue
 from isdleda.utils.export.export import from_csv_to_ledavalue, load_from_json
 
 # from typing import Set
@@ -27,7 +27,7 @@ def write_to_csv(filename, values):
         writer.writerows(values)
 
 
-def check_dataset(attack_dir, isd_val, reduction, msg):
+def check_dataset(attack_dir: str, isd_val: ISDValue, reduction, msg):
     filename = os.path.join(
         attack_dir, f"{isd_val.n:06}_{isd_val.k:06}_{isd_val.w:03}.json")
     # print(filename)
