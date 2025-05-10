@@ -16,27 +16,47 @@ from isdleda.utils.export.export import (from_csv_to_ledavalue, load_from_json,
 from isdleda.utils.paths import OUT_DIR
 
 
-def check_dataset(attack_dir: str, isd_val: ISDValue, reduction,
-                  msg) -> Tuple[float, float]:
+def check_dataset_common(attack_dir, isd_val):
     filename = os.path.join(
         attack_dir, f"{isd_val.n:06}_{isd_val.k:06}_{isd_val.w:03}.json")
     # print(filename)
     # continue exploring to find another minimum
     # filename = f"out/ledatools/json/{n:06}_{k:06}_{t:03}.json"
     try:
-        data = load_from_json(filename)
+        return load_from_json(filename)
     except:
-        print(f"{filename} not found")
+        return None
+
+def check_dataset_LT(attack_dir: str, isd_val: ISDValue, reduction,
+                     msg) -> Tuple[float, float]:
+    data = check_dataset_common(attack_dir, isd_val)
+    if data is None:
         return 0, 0
 
     c_time = data['Classic']['Plain']['value'] - reduction
     q_time = (data['Quantum']['Plain']['value']) * 2 - reduction
-    if c_time < 0 or q_time < 0:
-        print(f"{msg}")
-        raise Exception(
-            f"Value less than 0 for {filename}, with reduction {reduction}: {c_time}, {q_time}"
-        )
+    # if c_time < 0 or q_time < 0:
+    #     print(f"{msg}")
+    #     raise Exception(
+    #         f"Value less than 0 for {filename}, with reduction {reduction}: {c_time}, {q_time}"
+    #     )
     return c_time, q_time
+
+
+def check_dataset_CE(attack_dir: str, isd_val: ISDValue, reduction,
+                     msg) -> Tuple[float, float]:
+    data = check_dataset_common(attack_dir, isd_val)
+    if data is None:
+        return 0, 0
+    c_time = data["MinimumTime"][1]["estimate"]["time"]
+    # q_time = (data['Quantum']['Plain']['value']) * 2 - reduction
+    q_time = np.inf
+    return c_time, q_time
+
+
+def check_dataset_CAT(attack_dir: str, isd_val: ISDValue, reduction,
+                      msg) -> Tuple[float, float]:
+    raise ValueError('CAT Not implemented yet')
 
 
 def main():
@@ -46,9 +66,21 @@ def main():
     input_dir = argv[2]
     # The directory containing the json files containing ISD attacksk_dir = argv[
     attack_dir = argv[3]
+    # the tool used, like LT (LEDATools), CE (CryptographicEstimators), CAT (CryptAttackTester)
+    tool = argv[4]
     # if to check for the threshold, boolean
-    check_threshold = bool(argv[4])
+    check_threshold = bool(argv[5])
     print(f"stage {stage}, check_threshold {check_threshold}")
+
+    match tool:
+        case 'LT':
+            check_dataset = check_dataset_LT
+        case 'CE':
+            check_dataset = check_dataset_CE
+        case 'CAT':
+            check_dataset = check_dataset_CAT
+        case _:
+            raise ValueError('Wrong tool %s, possible values are LT, CE or CAT' % tool)
 
     output_dir = os.path.join(f"{OUT_DIR}", "isd-leda", "values", f"S{stage}")
     counter = get_pass_counter(output_dir)
@@ -68,7 +100,7 @@ def main():
         c_lambda = AES_LAMBDAS[int(level_idx)]
         q_lambda = QAES_LAMBDAS[int(level_idx)]
         # filename_out = f"{OUT_DIR}/post_dfr_in/{ITERATION_IN}/cat_{level}_attacks"
-        filename_out = os.path.join(_tmp, f"cat_{level}_attacks")
+        filename_out = os.path.join(_tmp, f"cat_{level}_attacks_{tool}")
         leda_values_to_attacks: List[LEDAValueAttackCost] = []
 
         for leda_val in leda_values:
