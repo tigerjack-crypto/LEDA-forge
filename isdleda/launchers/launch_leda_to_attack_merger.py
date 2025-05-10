@@ -3,6 +3,7 @@
 import csv
 import os
 from sys import argv
+from typing import Dict, List, Tuple
 
 import numpy as np
 from isdleda.launchers.launcher_utils import (
@@ -10,25 +11,23 @@ from isdleda.launchers.launcher_utils import (
     get_kra3_from_leda, get_mra_from_leda, get_pass_counter,
     get_qc_reduction_kra1, get_qc_reduction_kra2, get_qc_reduction_kra3,
     get_qc_reduction_mra, set_pass_counter)
-from isdleda.utils.common import ISDValue
+from isdleda.utils.common import Attack, ISDValue, LEDAValueAttackCost
+from isdleda.utils.export.export import (from_csv_to_ledavalue, load_from_json,
+                                         save_ledavalues_attack_cost_to_csv)
 from isdleda.utils.paths import OUT_DIR
-from isdleda.utils.export.export import from_csv_to_ledavalue, load_from_json
 
 # from typing import Set
 
 
 def write_to_csv(filename, values):
-    header = [
-        'n0', 'p', 't', 'v', 'c_mra', 'q_mra', 'c_kra1', 'q_kra1', 'c_kra2',
-        'q_kra2', 'c_kra3', 'q_kra3', 'c_best', 'q_best'
-    ]
     with open(f"{filename}.csv", 'w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(header)
         writer.writerows(values)
 
 
-def check_dataset(attack_dir: str, isd_val: ISDValue, reduction, msg):
+def check_dataset(attack_dir: str, isd_val: ISDValue, reduction,
+                  msg) -> Tuple[float, float]:
     filename = os.path.join(
         attack_dir, f"{isd_val.n:06}_{isd_val.k:06}_{isd_val.w:03}.json")
     # print(filename)
@@ -80,17 +79,12 @@ def main():
         q_lambda = QAES_LAMBDAS[int(level_idx)]
         # filename_out = f"{OUT_DIR}/post_dfr_in/{ITERATION_IN}/cat_{level}_attacks"
         filename_out = os.path.join(_tmp, f"cat_{level}_attacks")
-        csv_values = []
+        leda_values_to_attacks: List[LEDAValueAttackCost] = []
 
         for leda_val in leda_values:
-            c_values = []
-            q_values = []
-
-            csv_value = []
-            csv_value.append(leda_val.n0)
-            csv_value.append(leda_val.p)
-            csv_value.append(leda_val.t)
-            csv_value.append(leda_val.v)
+            # csv_value = []
+            c_costs: Dict[Attack, float] = {}
+            q_costs: Dict[Attack, float] = {}
 
             # MRA
             isd_val = get_mra_from_leda(leda_val)
@@ -103,11 +97,10 @@ def main():
             except FileNotFoundError:
                 missing_counter += 1
                 print(f"File not found for {leda_val} and {isd_val}")
+                c_aes, q_aes = np.inf, np.inf
             assert c_aes is not None and q_aes is not None
-            c_values.append(c_aes)
-            q_values.append(q_aes)
-            csv_value.append(c_aes)
-            csv_value.append(q_aes)
+            c_costs[Attack.MsgR] = c_aes
+            q_costs[Attack.MsgR] = q_aes
             del isd_val
 
             # KRA 1
@@ -121,12 +114,11 @@ def main():
             except FileNotFoundError:
                 missing_counter += 1
                 print(f"File not found for {leda_val} and {isd_val}")
+                c_aes, q_aes = np.inf, np.inf
             assert c_aes is not None and q_aes is not None
-            c_values.append(c_aes)
-            q_values.append(q_aes)
-            csv_value.append(c_aes)
-            csv_value.append(q_aes)
-            del isd_val
+            c_costs[Attack.KeyR1] = c_aes
+            q_costs[Attack.KeyR1] = q_aes
+            del isd_val, c_aes, q_aes
 
             # KRA 2
             if leda_val.n0 != 2:
@@ -140,14 +132,13 @@ def main():
                 except FileNotFoundError:
                     missing_counter += 1
                     print(f"File not found for {leda_val} and {isd_val}")
+                    c_aes, q_aes = np.inf, np.inf
                 assert c_aes is not None and q_aes is not None
-                c_values.append(c_aes)
-                q_values.append(q_aes)
-                csv_value.append(c_aes)
-                csv_value.append(q_aes)
             else:
-                csv_value.append(np.inf)
-                csv_value.append(np.inf)
+                c_aes = np.inf
+                q_aes = np.inf
+            c_costs[Attack.KeyR2] = c_aes
+            q_costs[Attack.KeyR2] = q_aes
 
             # KRA 3
             isd_val = get_kra3_from_leda(leda_val)
@@ -160,22 +151,23 @@ def main():
             except FileNotFoundError:
                 missing_counter += 1
                 print(f"File not found for {leda_val} and {isd_val}")
+                c_aes, q_aes = np.inf, np.inf
             assert c_aes is not None and q_aes is not None
-            c_values.append(c_aes)
-            q_values.append(q_aes)
-            csv_value.append(c_aes)
-            csv_value.append(q_aes)
+            c_costs[Attack.KeyR3] = c_aes
+            q_costs[Attack.KeyR3] = q_aes
 
             # min c, min q, min c attack, min q attack
-            min_c = min(c_values)
-            min_q = min(q_values)
-            if check_threshold and (min_c > .75 * c_lambda
-                                    or min_q > .75 * q_lambda):
-                csv_value.append(min_c)
-                csv_value.append(min_q)
-                csv_values.append(csv_value)
+            min_c = min(c_costs.items(), key=lambda x: x[1])
+            min_q = min(q_costs.items(), key=lambda x: x[1])
+            if check_threshold and (min_c[1] > .75 * c_lambda
+                                    or min_q[1] > .75 * q_lambda):
+                lvac = LEDAValueAttackCost(leda_val, c_costs, q_costs, min_c,
+                                           min_q)
+                leda_values_to_attacks.append(lvac)
 
-        write_to_csv(filename_out, csv_values)
+        save_ledavalues_attack_cost_to_csv(leda_values_to_attacks,
+                                           filename_out)
+        # write_to_csv(filename_out, csv_values)
     set_pass_counter(output_dir, counter + 1)
     print(f"{missing_counter} files missing")
 

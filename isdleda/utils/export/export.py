@@ -4,9 +4,11 @@ import os
 import pickle
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any, List
+from typing import Any, Dict, List
 
-from isdleda.utils.common import ISDValue, LEDAValue, dict_to_isd_value, dict_to_leda_value
+from isdleda.utils.common import (Attack, ISDValue, LEDAValue,
+                                  LEDAValueAttackCost, dict_to_isd_value,
+                                  dict_to_leda_value)
 
 
 def save_to_pickle(filename: str, obj: Any):
@@ -79,6 +81,7 @@ class LEDAValueEncoder(json.JSONEncoder):
             return asdict(obj)
         return super().default(obj)
 
+
 def ledavalue_decoder(data):
     """For leda values"""
     if isinstance(data, dict):
@@ -92,7 +95,7 @@ def ledavalue_decoder(data):
 
 
 def save_ledavalues_to_csv(ledavalues: List[LEDAValue], csv_file: str):
-    fieldnames = ['n0', 'p', 't', 'v', 'tau']
+    fieldnames = ['n0', 'p', 'v', 't', 'tau']
 
     with open(csv_file, 'w', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -102,6 +105,44 @@ def save_ledavalues_to_csv(ledavalues: List[LEDAValue], csv_file: str):
             # Only include the fields we want
             row = {field: getattr(val, field) for field in fieldnames}
             writer.writerow(row)
+
+
+def save_ledavalues_attack_cost_to_csv(leda_costs: List[LEDAValueAttackCost],
+                                       csv_file: str):
+    fieldnames = [
+        'n0', 'p', 'v', 't', 'tau', 'c_mra', 'q_mra', 'c_kra1', 'q_kra1',
+        'c_kra2', 'q_kra2', 'c_kra3', 'q_kra3', 'c_best', 'q_best'
+    ]
+
+    def ledavalattackcost_to_row(
+            leda_cost: LEDAValueAttackCost) -> Dict[str, Any]:
+        return {
+            'n0': leda_cost.ledaval.n0,
+            'p': leda_cost.ledaval.p,
+            'v': leda_cost.ledaval.v,
+            't': leda_cost.ledaval.t,
+            'tau': leda_cost.ledaval.tau,
+            'c_mra': leda_cost.c_costs.get(Attack.MsgR, ""),
+            'q_mra': leda_cost.q_costs.get(Attack.MsgR, ""),
+            'c_kra1': leda_cost.c_costs.get(Attack.KeyR1, ""),
+            'q_kra1': leda_cost.q_costs.get(Attack.KeyR1, ""),
+            'c_kra2': leda_cost.c_costs.get(Attack.KeyR2, ""),
+            'q_kra2': leda_cost.q_costs.get(Attack.KeyR2, ""),
+            'c_kra3': leda_cost.c_costs.get(Attack.KeyR3, ""),
+            'q_kra3': leda_cost.q_costs.get(Attack.KeyR3, ""),
+            'c_best_name': leda_cost.c_best[0].name,
+            'c_best': leda_cost.c_best[1],
+            'q_best_name': leda_cost.c_best[0].name,
+            'q_best': leda_cost.q_best[1],
+        }
+
+    with open(csv_file, 'w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+
+        for val in leda_costs:
+            # Only include the fields we want
+            writer.writerow(ledavalattackcost_to_row(val))
 
 
 class ISDValueEncoder(json.JSONEncoder):
@@ -126,6 +167,7 @@ def save_isdvalues_to_csv(isdvalues: List[ISDValue], csv_file: str):
             # Serialize the 'msgs' list to a string
             writer.writerow(row)
 
+
 def isdvalue_decoder(data):
     """For leda values"""
     if isinstance(data, dict):
@@ -136,6 +178,7 @@ def isdvalue_decoder(data):
         return [isdvalue_decoder(item) for item in data]
     else:
         return data
+
 
 def from_csv_to_isdvalue(csv_path: str) -> List[ISDValue]:
     result = []
@@ -150,6 +193,7 @@ def from_csv_to_isdvalue(csv_path: str) -> List[ISDValue]:
             result.append(ISDValue(n=n, k=k, w=w, msgs=msgs_list))
     return result
 
+
 def from_csv_to_ledavalue(csv_path: str) -> List[LEDAValue]:
     result = []
     with open(csv_path, newline='') as csvfile:
@@ -163,5 +207,6 @@ def from_csv_to_ledavalue(csv_path: str) -> List[LEDAValue]:
             tau = int(tau_raw) if tau_raw.strip() else None
             msgs = row.get('msgs', '')
             msgs_list = [msg.strip() for msg in msgs.split(';') if msg.strip()]
-            result.append(LEDAValue(p=p, n0=n0, t=t, v=v, tau=tau, msgs=msgs_list))
+            result.append(
+                LEDAValue(p=p, n0=n0, t=t, v=v, tau=tau, msgs=msgs_list))
     return result

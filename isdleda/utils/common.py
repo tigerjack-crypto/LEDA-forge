@@ -1,9 +1,9 @@
 from dataclasses import dataclass, field
 from enum import StrEnum, auto
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 
-class Attacks(StrEnum):
+class Attack(StrEnum):
     KeyR1 = auto()
     KeyR2 = auto()
     KeyR3 = auto()
@@ -27,7 +27,6 @@ def dict_to_isd_value(dct):
     raise Exception("Wrong dictionary for ISDValue")
 
 
-
 @dataclass(eq=True, frozen=True, order=True)
 class LEDAValue:
     p: int
@@ -44,10 +43,19 @@ def dict_to_leda_value(dct):
     raise Exception("Wrong dictionary for LEDAValue")
 
 
+@dataclass(order=True)
+class LEDAValueAttackCost:
+    ledaval: LEDAValue
+    c_costs: Dict[Attack, float]
+    q_costs: Dict[Attack, float]
+    c_best: Tuple[Attack, float]
+    q_best: Tuple[Attack, float]
+    msgs: Optional[Dict[str, Any]] = field(default=None, compare=False)
+
 
 @dataclass(order=True)
 class ISDVariant:
     value: ISDValue
-    attack: Attacks = field(compare=False)
+    attack: Attack = field(compare=False)
     isd_variant: str
     isd_variant_options: Dict[str, Any]
