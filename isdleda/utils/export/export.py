@@ -144,10 +144,10 @@ def from_csv_to_isdvalue(csv_path: str) -> List[ISDValue]:
         for row in reader:
             n = int(row['n'])
             k = int(row['k'])
-            t = int(row['t'])
+            w = int(row['w'])
             msgs = row.get('msgs', '')
             msgs_list = [msg.strip() for msg in msgs.split(';') if msg.strip()]
-            result.append(ISDValue(n=n, k=k, t=t, msgs=msgs_list))
+            result.append(ISDValue(n=n, k=k, w=w, msgs=msgs_list))
     return result
 
 def from_csv_to_ledavalue(csv_path: str) -> List[LEDAValue]:
