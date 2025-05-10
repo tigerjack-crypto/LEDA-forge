@@ -111,7 +111,7 @@ def save_ledavalues_attack_cost_to_csv(leda_costs: List[LEDAValueAttackCost],
                                        csv_file: str):
     fieldnames = [
         'n0', 'p', 'v', 't', 'tau', 'c_mra', 'q_mra', 'c_kra1', 'q_kra1',
-        'c_kra2', 'q_kra2', 'c_kra3', 'q_kra3', 'c_best', 'q_best'
+        'c_kra2', 'q_kra2', 'c_kra3', 'q_kra3', 'c_best_name', 'c_best', 'q_best_name', 'q_best'
     ]
 
     def ledavalattackcost_to_row(
