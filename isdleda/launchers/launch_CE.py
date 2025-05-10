@@ -6,10 +6,11 @@ import functools
 import logging
 import os
 import time
-from datetime import datetime
+# from datetime import datetime
 from multiprocessing import Pool
 from typing import Iterable, Optional, Sequence
 
+import psutil
 from cryptographic_estimators.SDEstimator import SDEstimator
 from isdleda.launchers.launcher_utils import (MemAccess,
                                               argparse_check_positive,
@@ -74,7 +75,7 @@ def _process_value(value: ISDValue, out_type: str, file_ext: str):
                                             w=value.w,
                                             ext=file_ext)
         if to_skip and os.path.isfile(out_file):
-            LOGGER.info(f"{out_file} already existing, skipping")
+            LOGGER.debug(f"{out_file} already existing, skipping")
             # continue
         else:
             to_skip = False
@@ -87,15 +88,19 @@ def _group_by_n_k(values: Iterable[ISDValue]):
     for value in values:
         key = hash(str(value.n) + '|' + str(value.k))
         values_dict[key].append(value)
-    LOGGER.info("Finished grouping by n and k")
+    LOGGER.debug("Finished grouping by n and k")
     return values_dict
 
 
 def isd_compute(arg, out_type: str, file_ext: str):
     # should be a list of values having same n and r
     # excluded_algorithms_by_default = [BJMMd2, BJMMd3, MayOzerovD2, MayOzerovD3]
+    pid = os.getpid()
+    process = psutil.Process(pid)
+    mem_mb = process.memory_info().rss / (1024 * 1024)  # Convert to MB
+    LOGGER.info(f"Starting task with PID={pid}, memory={mem_mb:.2f} MB")
     values_grouped: Sequence[ISDValue] = arg
-    LOGGER.info(f"Computing {values_grouped}")
+    LOGGER.debug(f"Computing {values_grouped}")
     # skip_algos = [
     #     BJMMdw, BJMMpdw, BJMMplus, BothMay, MayOzerov
     # ] + SDEstimator.excluded_algorithms_by_default
@@ -142,7 +147,11 @@ def isd_compute(arg, out_type: str, file_ext: str):
                     raise Exception(f"{file_ext} saving not implemented yet")
             # save_to_pickle(out_file, min_time)
     te = time.perf_counter()
-    return (values_grouped, len(values_grouped) * 4, te - t0)
+    mem_mb = process.memory_info().rss / (1024 * 1024)  # Convert to MB
+    LOGGER.info(
+        f"Ending task with PID={pid}, memory={mem_mb:.2f} MB, time {te - t0}")
+    # return (values_grouped, len(values_grouped) * 4)
+    return len(values_grouped) * 4
 
 
 def main(raw_args: Optional[list[str]] = None):
@@ -155,8 +164,8 @@ def main(raw_args: Optional[list[str]] = None):
         namespace = parser.parse_args(raw_args)
     else:
         namespace = parser.parse_args()
-    LOGGER.info(namespace)
-    LOGGER.info("#" * 80)
+    LOGGER.debug(namespace)
+    LOGGER.debug("#" * 80)
 
     #
     out_type = 'pkl' if namespace.out_format == 'bin' else namespace.out_format
@@ -170,19 +179,19 @@ def main(raw_args: Optional[list[str]] = None):
         case _:
             raise AttributeError(f"Wrong value for out_type: {out_type} ")
 
-    t0 = datetime.now()
-    LOGGER.info(f"Starting data filtering at {t0}")
+    # t0 = datetime.now()
+    # LOGGER.debug(f"Starting data filtering at {t0}")
 
     isd_values: Sequence[ISDValue] = [
         dict_to_isd_value(x) for x in load_from_json(namespace.input)
     ]
 
     tot = len(isd_values) * len(MemAccess)
-    LOGGER.info("#" * 80)
-    LOGGER.info("Fresh start")
-    LOGGER.info("#" * 80)
-    LOGGER.info(f"Total points to compute (estimate): {tot}")
-    LOGGER.info(f"Skip existing is: {namespace.skip_existing}")
+    LOGGER.debug("#" * 80)
+    LOGGER.debug("Fresh start")
+    LOGGER.debug("#" * 80)
+    LOGGER.debug(f"Total points to compute (estimate): {tot}")
+    LOGGER.debug(f"Skip existing is: {namespace.skip_existing}")
 
     if namespace.skip_existing:
         no_of_files = get_no_of_files(OUT_FILES_CEB_TYPE_DIR, out_type)
@@ -190,7 +199,7 @@ def main(raw_args: Optional[list[str]] = None):
         filter_fun = functools.partial(_process_value,
                                        out_type=out_type,
                                        file_ext=file_ext)
-        LOGGER.info(f"No. of already existing files: {no_of_files}")
+        LOGGER.debug(f"No. of already existing files: {no_of_files}")
         to_process_list = filter(filter_fun, isd_values)
     else:
         to_process_no = tot
@@ -201,15 +210,15 @@ def main(raw_args: Optional[list[str]] = None):
     del to_process_list
 
     acc = 0
-    t0 = datetime.now()
-    LOGGER.info(f"Starting processing at {t0}")
+    # t0 = datetime.now()
+    # LOGGER.debug(f"Starting processing at {t0}")
 
     isd_compute_partial = functools.partial(isd_compute,
                                             out_type=out_type,
                                             file_ext=file_ext)
     if namespace.poolsize == 1:
         for _, value in enumerate(to_process_group_nr.values()):
-            values, computations, _ = isd_compute_partial(value)
+            computations = isd_compute_partial(value)
             acc += computations
             print(
                 f"done {acc}/{to_process_no} (out of {tot}) -> {acc /to_process_no:%} ({acc /tot:%})",
@@ -223,15 +232,15 @@ def main(raw_args: Optional[list[str]] = None):
                         to_process_group_nr.values(),
                         chunksize=namespace.chunksize,
                     )):
-                values, computations, time = result
+                computations = result
                 acc += computations
                 print(
                     f"done {acc}/{to_process_no} (out of {tot}) -> {acc /to_process_no:%} ({acc /tot:%})",
                     end='\r')
-                LOGGER.info(f"Computed {values}, real time: {time} seconds")
+                # LOGGER.info(f"Computed {values}, real time: {time} seconds")
 
-    te = datetime.now()
-    LOGGER.info(f"Ending processing at {te}")
+    # te = datetime.now()
+    # LOGGER.info(f"Ending processing at {te}")
     LOGGER.info(f"Used: {namespace.poolsize} processes ")
     LOGGER.info(f"ISD values no: {len(isd_values)} processes ")
 
