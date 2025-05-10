@@ -10,20 +10,21 @@ from datetime import datetime
 from multiprocessing import Pool
 from typing import Iterable, Optional, Sequence
 
-# BallCollision, BJMM, BJMMdw, BJMMpdw, BJMMplus, BothMay, Dumer, MayOzerov, Prange, Stern
-
-
-from cryptographic_estimators.SDEstimator import MayOzerov  # Prange,
-from cryptographic_estimators.SDEstimator import (BJMM, BallCollision, BJMMdw,
-                                                  BJMMpdw, BJMMplus, BothMay,
-                                                  SDEstimator)
+from cryptographic_estimators.SDEstimator import SDEstimator
 from isdleda.launchers.launcher_utils import (MemAccess,
                                               argparse_check_positive,
                                               get_no_of_files, init_logger)
-from isdleda.utils.paths import OUT_DIR, OUT_FILES_PART_FMT
 from isdleda.utils.common import ISDValue, dict_to_isd_value
 from isdleda.utils.export.export import (load_from_json, save_to_json,
                                          save_to_pickle)
+from isdleda.utils.paths import OUT_DIR, OUT_FILES_PART_FMT
+
+# BallCollision, BJMM, BJMMdw, BJMMpdw, BJMMplus, BothMay, Dumer, MayOzerov, Prange, Stern
+# from cryptographic_estimators.SDEstimator import (BJMMdw,
+# MayOzerov,  # Prange,
+#                                                   BJMMpdw, BJMMplus, BothMay,
+#                                                   SDEstimator) # BJMM, BallCollision
+
 OUT_FILES_CEB_TYPE_DIR: str = os.path.join(OUT_DIR, "CE", "{out_type}")
 OUT_FILES_CEB_DIR: str = os.path.join(OUT_FILES_CEB_TYPE_DIR, "{memaccess}")
 OUT_FILES_CEB_FMT: str = os.path.join(OUT_FILES_CEB_DIR, OUT_FILES_PART_FMT)
@@ -95,10 +96,10 @@ def isd_compute(arg, out_type: str, file_ext: str):
     # excluded_algorithms_by_default = [BJMMd2, BJMMd3, MayOzerovD2, MayOzerovD3]
     values_grouped: Sequence[ISDValue] = arg
     LOGGER.info(f"Computing {values_grouped}")
-    skip_algos = [
-        BJMM, BallCollision, BJMMdw, BJMMpdw, BJMMplus, BothMay, MayOzerov
-    ] + SDEstimator.excluded_algorithms_by_default
-    # skip_algos = SDEstimator.excluded_algorithms_by_default
+    # skip_algos = [
+    #     BJMMdw, BJMMpdw, BJMMplus, BothMay, MayOzerov
+    # ] + SDEstimator.excluded_algorithms_by_default
+    skip_algos = SDEstimator.excluded_algorithms_by_default
     t0 = time.perf_counter()
     for value in values_grouped:
         # The idea is that Prange is not influenced much by the memory
