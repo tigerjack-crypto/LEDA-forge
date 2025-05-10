@@ -1,6 +1,5 @@
 """Add c_time and q_time to LEDA parameters (p, n0, v, t).
 """
-import csv
 import os
 from sys import argv
 from typing import Dict, List, Tuple
@@ -15,15 +14,6 @@ from isdleda.utils.common import Attack, ISDValue, LEDAValueAttackCost
 from isdleda.utils.export.export import (from_csv_to_ledavalue, load_from_json,
                                          save_ledavalues_attack_cost_to_csv)
 from isdleda.utils.paths import OUT_DIR
-
-# from typing import Set
-
-
-def write_to_csv(filename, values):
-    with open(f"{filename}.csv", 'w', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow(header)
-        writer.writerows(values)
 
 
 def check_dataset(attack_dir: str, isd_val: ISDValue, reduction,
