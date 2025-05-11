@@ -1,12 +1,16 @@
 import argparse
-import logging
-import numpy as np
-import os
 import csv
+import logging
+import os
 from enum import IntEnum
-from typing import Optional, List
+from pathlib import Path
+from typing import List, Optional
 
+import numpy as np
 from isdleda.utils.common import ISDValue
+
+# Path to the submodule (relative to the main repo root)
+submodule_path = Path("path/to/your/submodule")
 
 # Official levels
 LEVELS = (128, 192, 256)
@@ -140,3 +144,14 @@ def get_qc_reduction_kra2(leda_val):
 def get_qc_reduction_kra3(leda_val):
     return np.log2(leda_val.p)
 
+
+def get_git_commit(path):
+    """Get git commit from file"""
+    with open(os.path.join(path, 'git-commit.txt'), 'r') as f:
+        git_commit = f.readline().strip()
+    return git_commit
+    # result = subprocess.run(["git", "rev-parse", "HEAD"],
+    #                         cwd=path,
+    #                         capture_output=True,
+    #                         text=True,
+    #                         check=True)
