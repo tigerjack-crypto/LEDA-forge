@@ -14,19 +14,29 @@ import psutil
 from cryptographic_estimators.SDEstimator import SDEstimator
 from isdleda.launchers.launcher_utils import (MemAccess,
                                               argparse_check_positive,
-                                              get_no_of_files, init_logger)
+                                              get_git_commit, get_no_of_files,
+                                              init_logger)
 from isdleda.utils.common import ISDValue, dict_to_isd_value
 from isdleda.utils.export.export import (load_from_json, save_to_json,
                                          save_to_pickle)
 from isdleda.utils.paths import OUT_DIR, OUT_FILES_PART_FMT
 
 # BallCollision, BJMM, BJMMdw, BJMMpdw, BJMMplus, BothMay, Dumer, MayOzerov, Prange, Stern
-# from cryptographic_estimators.SDEstimator import (BJMMdw,
-# MayOzerov,  # Prange,
-#                                                   BJMMpdw, BJMMplus, BothMay,
-#                                                   SDEstimator) # BJMM, BallCollision
+# from cryptographic_estimators.SDEstimator import (
+#     # Prange,
+#     # Dumer,
+#     # Stern,
+#     BJMMdw,
+#     MayOzerov,
+#     BJMM,
+#     BallCollision,
+#     BJMMpdw,
+#     BJMMplus,
+#     BothMay,
+#     )
 
-OUT_FILES_CEB_TYPE_DIR: str = os.path.join(OUT_DIR, "CE", "{out_type}")
+OUT_FILES_CEB_TYPE_DIR: str = os.path.join(OUT_DIR, "CE", "{ce_commit}",
+                                           "{out_type}")
 OUT_FILES_CEB_DIR: str = os.path.join(OUT_FILES_CEB_TYPE_DIR, "{memaccess}")
 OUT_FILES_CEB_FMT: str = os.path.join(OUT_FILES_CEB_DIR, OUT_FILES_PART_FMT)
 
@@ -53,14 +63,26 @@ def parse_arguments():
                         help="Multiprocess chunk size")
     parser.add_argument("--skip-existing",
                         action="store_true",
-                        help="Skip quantum complexity files if existing")
+                        help="Skip complexity files if existing")
     parser.add_argument("--out-format", choices=["pkl", "json"], default="pkl")
     parser.add_argument("--input",
                         help="Input file name containing the isd values")
     return parser
 
 
-def _process_value(value: ISDValue, out_type: str, file_ext: str):
+def _get_out_file(mem_access, out_type, value, file_ext, ce_commit):
+    out_file = OUT_FILES_CEB_FMT.format(memaccess=mem_access.name,
+                                        out_type=out_type,
+                                        n=value.n,
+                                        k=value.k,
+                                        w=value.w,
+                                        ext=file_ext,
+                                        ce_commit=ce_commit[:6])
+    return out_file
+
+
+def _process_value(value: ISDValue, out_type: str, file_ext: str,
+                   ce_commit: str):
     to_skip = True
     for mem_access in (
             MemAccess.MEM_CONST,
@@ -68,12 +90,8 @@ def _process_value(value: ISDValue, out_type: str, file_ext: str):
             MemAccess.MEM_SQRT,
             MemAccess.MEM_CBRT,
     ):
-        out_file = OUT_FILES_CEB_FMT.format(memaccess=mem_access.name,
-                                            out_type=out_type,
-                                            n=value.n,
-                                            k=value.k,
-                                            w=value.w,
-                                            ext=file_ext)
+        out_file = _get_out_file(mem_access, out_type, value, file_ext,
+                                 ce_commit)
         if to_skip and os.path.isfile(out_file):
             LOGGER.debug(f"{out_file} already existing, skipping")
             # continue
@@ -92,7 +110,7 @@ def _group_by_n_k(values: Iterable[ISDValue]):
     return values_dict
 
 
-def isd_compute(arg, out_type: str, file_ext: str):
+def isd_compute(arg, out_type: str, file_ext: str, ce_commit: str):
     # should be a list of values having same n and r
     # excluded_algorithms_by_default = [BJMMd2, BJMMd3, MayOzerovD2, MayOzerovD3]
     pid = os.getpid()
@@ -102,7 +120,7 @@ def isd_compute(arg, out_type: str, file_ext: str):
     values_grouped: Sequence[ISDValue] = arg
     LOGGER.debug(f"Computing {values_grouped}")
     # skip_algos = [
-    #     BJMMdw, BJMMpdw, BJMMplus, BothMay, MayOzerov
+    #     BJMM, BallCollision, BJMMdw, BJMMpdw, BJMMplus, BothMay, MayOzerov
     # ] + SDEstimator.excluded_algorithms_by_default
     skip_algos = SDEstimator.excluded_algorithms_by_default
     t0 = time.perf_counter()
@@ -116,12 +134,8 @@ def isd_compute(arg, out_type: str, file_ext: str):
             (MemAccess.MEM_SQRT, ()),
             (MemAccess.MEM_CBRT, ()),
         ):
-            out_file = OUT_FILES_CEB_FMT.format(memaccess=mem_access.name,
-                                                out_type=out_type,
-                                                n=value.n,
-                                                k=value.k,
-                                                w=value.w,
-                                                ext=file_ext)
+            out_file = _get_out_file(mem_access, out_type, value, file_ext,
+                                     ce_commit)
             sd = SDEstimator(value.n,
                              value.k,
                              value.w,
@@ -193,12 +207,19 @@ def main(raw_args: Optional[list[str]] = None):
     LOGGER.debug(f"Total points to compute (estimate): {tot}")
     LOGGER.debug(f"Skip existing is: {namespace.skip_existing}")
 
+    # main_commit = get_git_commit('.')
+    ce_commit = get_git_commit('./submodules/cryptographic_estimators')
+    print(f"CE commit: {ce_commit}")
+
     if namespace.skip_existing:
         no_of_files = get_no_of_files(OUT_FILES_CEB_TYPE_DIR, out_type)
         to_process_no = tot - no_of_files
-        filter_fun = functools.partial(_process_value,
-                                       out_type=out_type,
-                                       file_ext=file_ext)
+        filter_fun = functools.partial(
+            _process_value,
+            out_type=out_type,
+            file_ext=file_ext,
+            ce_commit=ce_commit,
+        )
         LOGGER.debug(f"No. of already existing files: {no_of_files}")
         to_process_list = filter(filter_fun, isd_values)
     else:
@@ -215,7 +236,8 @@ def main(raw_args: Optional[list[str]] = None):
 
     isd_compute_partial = functools.partial(isd_compute,
                                             out_type=out_type,
-                                            file_ext=file_ext)
+                                            file_ext=file_ext,
+                                            ce_commit=ce_commit)
     if namespace.poolsize == 1:
         for _, value in enumerate(to_process_group_nr.values()):
             computations = isd_compute_partial(value)
