@@ -93,7 +93,7 @@ def main():
     missing_counter = 0
 
     for level_idx, level in enumerate((1, 3, 5)):
-        filename_in = f"{input_dir}/cat_{level}_region"
+        filename_in = os.path.join(input_dir, "cat_{level}_region.csv")
         # filename_in = f"{OUT_DIR}/post_dfr_in/{ITERATION_IN}/cat_{level}_region"
         leda_values = from_csv_to_ledavalue(f"{filename_in}.csv")
         print(f"found {len(leda_values)} in {filename_in}")

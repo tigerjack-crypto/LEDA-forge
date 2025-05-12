@@ -136,7 +136,10 @@ def save_ledavalues_attack_cost_to_csv(leda_costs: List[LEDAValueAttackCost],
             'q_best': leda_cost.q_best[1],
         }
 
-    with open(csv_file, 'w', newline='') as f:
+    fn = csv_file + ".csv" if not Path(
+            csv_file).suffix == ".csv" else csv_file
+
+    with open(fn, 'w', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
 
