@@ -6,7 +6,7 @@ import functools
 import logging
 import os
 import time
-# from datetime import datetime
+from datetime import datetime
 from multiprocessing import Pool
 from typing import Iterable, Optional, Sequence
 
@@ -35,10 +35,10 @@ from isdleda.utils.paths import OUT_DIR, OUT_FILES_PART_FMT
 #     BothMay,
 #     )
 
-OUT_FILES_CEB_TYPE_DIR: str = os.path.join(OUT_DIR, "CE", "{ce_commit}",
+OUT_FILES_CE_TYPE_DIR: str = os.path.join(OUT_DIR, "CE", "{ce_commit}",
                                            "{out_type}")
-OUT_FILES_CEB_DIR: str = os.path.join(OUT_FILES_CEB_TYPE_DIR, "{memaccess}")
-OUT_FILES_CEB_FMT: str = os.path.join(OUT_FILES_CEB_DIR, OUT_FILES_PART_FMT)
+OUT_FILES_CE_DIR: str = os.path.join(OUT_FILES_CE_TYPE_DIR, "{memaccess}")
+OUT_FILES_CE_FMT: str = os.path.join(OUT_FILES_CE_DIR, OUT_FILES_PART_FMT)
 
 LOGGER = logging.getLogger(__name__)
 LOG_DIR = "logs"
@@ -71,7 +71,7 @@ def parse_arguments():
 
 
 def _get_out_file(mem_access, out_type, value, file_ext, ce_commit):
-    out_file = OUT_FILES_CEB_FMT.format(memaccess=mem_access.name,
+    out_file = OUT_FILES_CE_FMT.format(memaccess=mem_access.name,
                                         out_type=out_type,
                                         n=value.n,
                                         k=value.k,
@@ -212,7 +212,7 @@ def main(raw_args: Optional[list[str]] = None):
     print(f"CE commit: {ce_commit}")
 
     if namespace.skip_existing:
-        no_of_files = get_no_of_files(OUT_FILES_CEB_TYPE_DIR, out_type)
+        no_of_files = get_no_of_files(OUT_FILES_CE_TYPE_DIR, out_type)
         to_process_no = tot - no_of_files
         filter_fun = functools.partial(
             _process_value,
@@ -238,6 +238,10 @@ def main(raw_args: Optional[list[str]] = None):
                                             out_type=out_type,
                                             file_ext=file_ext,
                                             ce_commit=ce_commit)
+    print(f"Using: {namespace.poolsize} processes ")
+    print(f"ISD values no: {len(isd_values)} processes ")
+    ts = datetime.now()
+    print(ts)
     if namespace.poolsize == 1:
         for _, value in enumerate(to_process_group_nr.values()):
             computations = isd_compute_partial(value)
@@ -261,10 +265,8 @@ def main(raw_args: Optional[list[str]] = None):
                     end='\r')
                 # LOGGER.info(f"Computed {values}, real time: {time} seconds")
 
-    # te = datetime.now()
-    # LOGGER.info(f"Ending processing at {te}")
-    LOGGER.info(f"Used: {namespace.poolsize} processes ")
-    LOGGER.info(f"ISD values no: {len(isd_values)} processes ")
+    te = datetime.now()
+    LOGGER.info(f"Ending processing at {te}")
 
 
 if __name__ == '__main__':
