@@ -54,9 +54,18 @@ def check_dataset_CE(attack_dir: str, isd_val: ISDValue, reduction,
     return c_time, q_time
 
 
+
 def check_dataset_CAT(attack_dir: str, isd_val: ISDValue, reduction,
                       msg) -> Tuple[float, float]:
-    raise ValueError('CAT Not implemented yet')
+    filename = os.path.join(
+        attack_dir, f"{isd_val.n:06}_{isd_val.k:06}_{isd_val.w:03}.json")
+    if not os.path.exists(filename):
+        print(f"File not existing {filename}")
+        return 0, 0
+    with open(filename, 'r') as infile:
+        line = infile.readline()
+        value = float(line)
+        return value, np.inf
 
 
 def main():
