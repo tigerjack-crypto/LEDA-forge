@@ -56,10 +56,13 @@ def process_csv(input_file):
     for (N, K, W), entries in groups.items():
         # Find the entry with the minimum lgratio
         min_lgratio_entry, min_lgratio_value = min(entries, key=lambda x: x[0])
+        n=int(N)
+        k=int(K)
+        w=int(W)
 
         # Define the output file path
         output_file_path = os.path.join(
-            OUT_FILES_CAT_FMT.format(n=N, k=K, w=W, ext='txt'))
+            OUT_FILES_CAT_FMT.format(n=n, k=k, w=w, ext='txt'))
 
         with open(output_file_path, 'w', newline='') as outfile:
             # writer = csv.writer(outfile)
