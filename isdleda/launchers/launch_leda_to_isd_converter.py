@@ -32,7 +32,8 @@ def worker(level, input_dir):
         if leda_val.n0 != 2:
             isd_values.append(get_kra2_from_leda(leda_val))
         isd_values.append(get_kra3_from_leda(leda_val))
-    print(f"Level {level}: Finished worker")
+
+    print(f"Level {level}: Finished worker, processed all ledavals")
     return list(set(isd_values))
 
 
@@ -52,6 +53,11 @@ def get_output_filename(output_dir, counter):
 def main():
     stage = argv[1]  # the stage in which we are in
     input_dir = argv[2]  # The directory containing the CSV files
+    try:
+        update_counter = bool(int(argv[3]))
+    except:
+        update_counter = True
+    print(f"Update counter {update_counter}")
 
     output_dir = os.path.join(f"{OUT_DIR}", "isd-leda", "values", f"S{stage}")
     counter = get_pass_counter(output_dir)
@@ -71,7 +77,8 @@ def main():
     filename = os.path.join(_tmp, "isd_values.json")
     print(f"Output file {filename}")
     save_to_json(filename, isd_vals, cls=ISDValueEncoder)
-    set_pass_counter(output_dir, counter + 1)
+    if update_counter:
+        set_pass_counter(output_dir, counter + 1)
 
 
 if __name__ == '__main__':
