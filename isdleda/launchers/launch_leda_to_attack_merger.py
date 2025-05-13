@@ -16,22 +16,17 @@ from isdleda.utils.export.export import (from_csv_to_ledavalue, load_from_json,
 from isdleda.utils.paths import OUT_DIR
 
 
-def check_dataset_common(attack_dir, isd_val):
-    filename = os.path.join(
-        attack_dir, f"{isd_val.n:06}_{isd_val.k:06}_{isd_val.w:03}.json")
-    # print(filename)
-    # continue exploring to find another minimum
-    # filename = f"out/ledatools/json/{n:06}_{k:06}_{t:03}.json"
-    try:
-        return load_from_json(filename)
-    except:
-        return None
-
 def check_dataset_LT(attack_dir: str, isd_val: ISDValue, reduction,
                      msg) -> Tuple[float, float]:
-    data = check_dataset_common(attack_dir, isd_val)
-    if data is None:
-        return 0, 0
+    filename = os.path.join(
+        attack_dir, f"{isd_val.n:06}_{isd_val.k:06}_{isd_val.w:03}.json")
+
+    data = load_from_json(filename)
+    # try:
+    #     data = load_from_json(filename)
+    # except FileNotFoundError as e:
+    #     print(f"Unable to load data from file {filename}")
+    #     return np.inf, np.inf
 
     c_time = data['Classic']['Plain']['value'] - reduction
     q_time = (data['Quantum']['Plain']['value']) * 2 - reduction
@@ -45,10 +40,16 @@ def check_dataset_LT(attack_dir: str, isd_val: ISDValue, reduction,
 
 def check_dataset_CE(attack_dir: str, isd_val: ISDValue, reduction,
                      msg) -> Tuple[float, float]:
-    data = check_dataset_common(attack_dir, isd_val)
-    if data is None:
-        return 0, 0
+    filename = os.path.join(
+        attack_dir, f"{isd_val.n:06}_{isd_val.k:06}_{isd_val.w:03}.json")
+    data = load_from_json(filename)
+    # try:
+    #     data = load_from_json(filename)
+    # except:
+    #     print(f"Unable to load data from file {filename}")
+    #     return np.inf, np.inf
     c_time = data["MinimumTime"][1]["estimate"]["time"]
+    print(c_time)
     # q_time = (data['Quantum']['Plain']['value']) * 2 - reduction
     q_time = np.inf
     return c_time, q_time
@@ -58,13 +59,15 @@ def check_dataset_CE(attack_dir: str, isd_val: ISDValue, reduction,
 def check_dataset_CAT(attack_dir: str, isd_val: ISDValue, reduction,
                       msg) -> Tuple[float, float]:
     filename = os.path.join(
-        attack_dir, f"{isd_val.n:06}_{isd_val.k:06}_{isd_val.w:03}.json")
-    if not os.path.exists(filename):
-        print(f"File not existing {filename}")
-        return 0, 0
+        attack_dir, f"{isd_val.n:06}_{isd_val.k:06}_{isd_val.w:03}.txt")
+    # if not os.path.exists(filename):
+    #     print(f"File not existing {filename}")
+    #     return np.inf, np.inf
+    print(filename)
     with open(filename, 'r') as infile:
         line = infile.readline()
         value = float(line)
+        print(line)
         return value, np.inf
 
 
@@ -78,8 +81,14 @@ def main():
     # the tool used, like LT (LEDATools), CE (CryptographicEstimators), CAT (CryptAttackTester)
     tool = argv[4]
     # if to check for the threshold, boolean
-    check_threshold = bool(argv[5])
-    print(f"stage {stage}, check_threshold {check_threshold}")
+    check_threshold = bool(int(argv[5]))
+    # if to update the counter, default to True
+    try:
+        update_counter = bool(int(argv[6]))
+    except:
+        update_counter = True
+    print(f"stage {stage}, check_threshold {check_threshold}, update counter {update_counter}")
+
 
     match tool:
         case 'LT':
@@ -102,7 +111,7 @@ def main():
     missing_counter = 0
 
     for level_idx, level in enumerate((1, 3, 5)):
-        filename_in = os.path.join(input_dir, "cat_{level}_region.csv")
+        filename_in = os.path.join(input_dir, f"cat_{level}_region")
         # filename_in = f"{OUT_DIR}/post_dfr_in/{ITERATION_IN}/cat_{level}_region"
         leda_values = from_csv_to_ledavalue(f"{filename_in}.csv")
         print(f"found {len(leda_values)} in {filename_in}")
@@ -128,6 +137,11 @@ def main():
             except FileNotFoundError:
                 missing_counter += 1
                 print(f"File not found for {leda_val} and {isd_val}")
+                continue
+            if c_aes is None:
+                # at least c_aes present, q_aes is only from LT
+                print(f"Value not found for {leda_val} and {isd_val}")
+                missing_counter += 1
                 c_aes, q_aes = np.inf, np.inf
             assert c_aes is not None and q_aes is not None
             c_costs[Attack.MsgR] = c_aes
@@ -191,7 +205,7 @@ def main():
             min_c = min(c_costs.items(), key=lambda x: x[1])
             min_q = min(q_costs.items(), key=lambda x: x[1])
             if check_threshold and (min_c[1] > .75 * c_lambda
-                                    or min_q[1] > .75 * q_lambda):
+                                    and min_q[1] > .75 * q_lambda):
                 lvac = LEDAValueAttackCost(leda_val, c_costs, q_costs, min_c,
                                            min_q)
                 leda_values_to_attacks.append(lvac)
@@ -199,7 +213,8 @@ def main():
         save_ledavalues_attack_cost_to_csv(leda_values_to_attacks,
                                            filename_out)
         # write_to_csv(filename_out, csv_values)
-    set_pass_counter(output_dir, counter + 1)
+    if update_counter:
+        set_pass_counter(output_dir, counter + 1)
     print(f"{missing_counter} files missing")
 
 
