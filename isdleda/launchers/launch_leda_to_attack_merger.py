@@ -1,5 +1,6 @@
 """Add c_time and q_time to LEDA parameters (p, n0, v, t).
 """
+import functools
 import os
 from sys import argv
 from typing import Dict, List, Tuple
@@ -38,18 +39,17 @@ def check_dataset_LT(attack_dir: str, isd_val: ISDValue, reduction,
     return c_time, q_time
 
 
-def check_dataset_CE(attack_dir: str, isd_val: ISDValue, reduction,
+def check_dataset_CE(mem_cost: str, attack_dir: str, isd_val: ISDValue, reduction,
                      msg) -> Tuple[float, float]:
     filename = os.path.join(
-        attack_dir, f"{isd_val.n:06}_{isd_val.k:06}_{isd_val.w:03}.json")
+        attack_dir, f"MEM_{mem_cost}", f"{isd_val.n:06}_{isd_val.k:06}_{isd_val.w:03}.json")
     data = load_from_json(filename)
     # try:
     #     data = load_from_json(filename)
     # except:
     #     print(f"Unable to load data from file {filename}")
     #     return np.inf, np.inf
-    c_time = data["MinimumTime"][1]["estimate"]["time"]
-    print(c_time)
+    c_time = data["MinimumTime"][1]["estimate"]["time"] - reduction
     # q_time = (data['Quantum']['Plain']['value']) * 2 - reduction
     q_time = np.inf
     return c_time, q_time
@@ -66,7 +66,7 @@ def check_dataset_CAT(attack_dir: str, isd_val: ISDValue, reduction,
     print(filename)
     with open(filename, 'r') as infile:
         line = infile.readline()
-        value = float(line)
+        value = float(line)  - reduction
         print(line)
         return value, np.inf
 
@@ -93,12 +93,14 @@ def main():
     match tool:
         case 'LT':
             check_dataset = check_dataset_LT
-        case 'CE':
-            check_dataset = check_dataset_CE
-        case 'CAT':
-            check_dataset = check_dataset_CAT
-        case _:
-            raise ValueError('Wrong tool %s, possible values are LT, CE or CAT' % tool)
+        case 'CE_CONST':
+            check_dataset = functools.partial(check_dataset_CE, 'CONST')
+        case 'CE_LOG':
+            check_dataset = functools.partial(check_dataset_CE, 'LOG')
+        case 'CE_SQRT':
+            check_dataset = functools.partial(check_dataset_CE, 'SQRT')
+        case 'CE_CBRT':
+            check_dataset = functools.partial(check_dataset_CE, 'CBRT')
 
     output_dir = os.path.join(f"{OUT_DIR}", "isd-leda", "values", f"S{stage}")
     counter = get_pass_counter(output_dir)
