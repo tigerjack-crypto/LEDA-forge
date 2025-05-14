@@ -205,6 +205,7 @@ def main(raw_args: Optional[list[str]] = None):
     LOGGER.debug("Fresh start")
     LOGGER.debug("#" * 80)
     LOGGER.debug(f"Total points to compute (estimate): {tot}")
+    print(f"Candidate ISD values to compute (estimate): {tot}")
     LOGGER.debug(f"Skip existing is: {namespace.skip_existing}")
 
     # main_commit = get_git_commit('.')
@@ -214,6 +215,7 @@ def main(raw_args: Optional[list[str]] = None):
     if namespace.skip_existing:
         no_of_files = get_no_of_files(OUT_FILES_CE_TYPE_DIR, out_type)
         to_process_no = tot - no_of_files
+        print(f"Actual ISD values to compute ?? {to_process_no} ")
         filter_fun = functools.partial(
             _process_value,
             out_type=out_type,
