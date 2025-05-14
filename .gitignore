@@ -1,6 +1,10 @@
 ##################
 # PROJECT
 ##################
+isdleda/experiments
+GPATH
+GRTAGS
+GTAGS
 sshfs_mountpoint
 *.dat
 data/
