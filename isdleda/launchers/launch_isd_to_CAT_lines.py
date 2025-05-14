@@ -10,4 +10,4 @@ for entry in data:
     n_value = entry['n']
     k_value = entry['k']
     w_value = entry['w']
-    print(f"N={n_value},K={k_value},W={w_value}")
+    print(f"\'N={n_value},K={k_value},W={w_value}\',")
