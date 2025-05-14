@@ -239,7 +239,7 @@ def main(raw_args: Optional[list[str]] = None):
                                             file_ext=file_ext,
                                             ce_commit=ce_commit)
     print(f"Using: {namespace.poolsize} processes ")
-    print(f"ISD values no: {len(isd_values)} processes ")
+    print(f"ISD values no: {len(isd_values)} for each MEM level")
     ts = datetime.now()
     print(ts)
     if namespace.poolsize == 1:
