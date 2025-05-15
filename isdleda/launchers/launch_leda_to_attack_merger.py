@@ -93,6 +93,8 @@ def main():
     match tool:
         case 'LT':
             check_dataset = check_dataset_LT
+        case 'CAT':
+            check_dataset = check_dataset_CAT
         case 'CE_CONST':
             check_dataset = functools.partial(check_dataset_CE, 'CONST')
         case 'CE_LOG':

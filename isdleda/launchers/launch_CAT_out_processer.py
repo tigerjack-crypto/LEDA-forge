@@ -6,8 +6,8 @@ from sys import argv
 
 from isdleda.utils.paths import OUT_DIR, OUT_FILES_PART_FMT
 
-OUT_FILES_CAT_DIR: str = os.path.join(OUT_DIR, "CAT")
-OUT_FILES_CAT_FMT: str = os.path.join(OUT_FILES_CAT_DIR, "txt", OUT_FILES_PART_FMT)
+OUT_FILES_CAT_DIR: str = os.path.join(OUT_DIR, "CAT", ("txt-isd{isd}"))
+OUT_FILES_CAT_FMT: str = os.path.join(OUT_FILES_CAT_DIR, OUT_FILES_PART_FMT)
 
 
 # Function to parse the lgratio values from the string
@@ -25,7 +25,7 @@ def parse_lgratio(line):
 
 
 # Function to read and process the CSV file
-def process_csv(input_file):
+def process_csv(input_file, isd_val):
     # Store the grouped lines by (N, K, W)
     groups = defaultdict(list)
 
@@ -62,7 +62,7 @@ def process_csv(input_file):
 
         # Define the output file path
         output_file_path = os.path.join(
-            OUT_FILES_CAT_FMT.format(n=n, k=k, w=w, ext='txt'))
+            OUT_FILES_CAT_FMT.format(isd=isd_val, n=n, k=k, w=w, ext='txt'))
 
         with open(output_file_path, 'w', newline='') as outfile:
             # writer = csv.writer(outfile)
@@ -74,8 +74,14 @@ def process_csv(input_file):
 def main():
     # Define the input and output file paths
     input_file = argv[1]
+    # admissible 0, 1, 2
+    isd_val = argv[2]
+
+    outdir = OUT_FILES_CAT_DIR.format(isd=isd_val)
+    print(f"outdir is {outdir}")
+    os.makedirs(outdir, exist_ok=True)
     # Process the file
-    process_csv(input_file)
+    process_csv(input_file, isd_val)
 
     print("Processing complete. Results saved.")
 
