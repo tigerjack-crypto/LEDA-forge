@@ -243,7 +243,7 @@ def main(raw_args: Optional[list[str]] = None):
     print(f"Using: {namespace.poolsize} processes ")
     print(f"ISD values no: {len(isd_values)} for each MEM level")
     ts = datetime.now()
-    print(ts)
+    print(f"Time now {ts}")
     if namespace.poolsize == 1:
         for _, value in enumerate(to_process_group_nr.values()):
             computations = isd_compute_partial(value)
@@ -268,6 +268,7 @@ def main(raw_args: Optional[list[str]] = None):
                 # LOGGER.info(f"Computed {values}, real time: {time} seconds")
 
     te = datetime.now()
+    print(f"Time now {te}")
     LOGGER.info(f"Ending processing at {te}")
 
 

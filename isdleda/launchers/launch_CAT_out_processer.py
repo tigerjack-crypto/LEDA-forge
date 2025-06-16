@@ -49,8 +49,8 @@ def process_csv(input_file, isd_val):
                     # Store the line along with the parsed lgratio
                     groups[(N, K, W)].append((lgratio, line))
 
-    # Ensure output directory exists
-    os.makedirs(OUT_FILES_CAT_DIR, exist_ok=True)
+    # # Ensure output directory exists, alrady done before
+    # os.makedirs(OUT_FILES_CAT_DIR.format(isd=isd_val), exist_ok=True)
 
     # Iterate through each group and write the result to a separate file
     for (N, K, W), entries in groups.items():

@@ -63,11 +63,11 @@ def check_dataset_CAT(attack_dir: str, isd_val: ISDValue, reduction,
     # if not os.path.exists(filename):
     #     print(f"File not existing {filename}")
     #     return np.inf, np.inf
-    print(filename)
+    # print(filename)
     with open(filename, 'r') as infile:
         line = infile.readline()
         value = float(line)  - reduction
-        print(line)
+        # print(line)
         return value, np.inf
 
 
@@ -76,7 +76,7 @@ def main():
     stage = int(argv[1])
     # The directory containing the CSV files of LEDA values
     input_dir = argv[2]
-    # The directory containing the json files containing ISD attacksk_dir = argv[
+    # The directory containing the json files containing ISD attacks
     attack_dir = argv[3]
     # the tool used, like LT (LEDATools), CE (CryptographicEstimators), CAT (CryptAttackTester)
     tool = argv[4]
