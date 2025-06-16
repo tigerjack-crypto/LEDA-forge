@@ -1,3 +1,6 @@
+"""Auxiliary script.
+Given a CSV file containing a list of ISD values, output the same list formatted as CAT expects
+"""
 from isdleda.utils.export.export import load_from_json
 from sys import argv
 

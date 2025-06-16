@@ -1,3 +1,8 @@
+"""Given a long txt file containing a list of ISD parameters, and ISD attack
+values, coming from CAT, group them by ISD values (n, k, w) and put each ISD
+value in a separate file.
+
+"""
 import csv
 import os
 import re
