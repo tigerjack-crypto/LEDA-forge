@@ -1,4 +1,4 @@
-"""Given a list (in csv) of leda values, output the ISD attack list"""
+"""Given a list (in csv) of leda values, output the ISD attack list (json)"""
 import os
 from itertools import chain
 from multiprocessing import Pool

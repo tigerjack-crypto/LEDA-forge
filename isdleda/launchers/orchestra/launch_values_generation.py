@@ -1,5 +1,6 @@
 """Exhaustive search over all parameters.
-The Torres, Sendrier approximation did not work so good.
+The Torres, Sendrier approximation did not work so good, and hence this tool will generate
+all the candidate LEDA values exhaustively.
 """
 import json
 import os
