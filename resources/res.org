@@ -1,0 +1,6 @@
+- [LEDA old specs](https://www.ledacrypt.org/document/LEDAcrypt_v3.pdf)
+- [LEDA new params](https://eprint.iacr.org/2025/1043)
+- [CryptographicEstimators](https://csrc.nist.gov/csrc/media/Projects/post-quantum-cryptography/documents/pqc-seminars/presentations/10-CryptoEstimators-verbel-esser-11282023.pdf)
+- [CryptAttackTester](https://cat.cr.yp.to/cryptattacktester-20231020.tar.gz)
+
+
