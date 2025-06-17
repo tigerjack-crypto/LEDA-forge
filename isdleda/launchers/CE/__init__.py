@@ -14,9 +14,8 @@ sys.modules['prettytable'] = mock_prettytable
 
 # Add CE submodule to path
 thisdir = os.path.dirname(os.path.realpath(__file__))
-# print(thisdir)
 sys.path.append(
-    os.path.join(thisdir, "..", "..", "submodules",
+    os.path.join(thisdir, "..", "..", "..", "submodules",
                  "cryptographic_estimators"))
 # sys.path.append(os.path.join(thisdir, "..", "..", "submodules", "isd_scripts"))
 print(f"INFO: sys path is {sys.path}")
