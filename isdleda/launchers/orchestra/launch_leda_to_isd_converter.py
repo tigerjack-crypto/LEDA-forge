@@ -59,7 +59,7 @@ def main():
         update_counter = True
     print(f"Update counter {update_counter}")
 
-    output_dir = os.path.join(f"{OUT_DIR}", "isd-leda", "values", f"S{stage}")
+    output_dir = os.path.join(f"{OUT_DIR}", "orchestra", "values", f"S{stage}")
     counter = get_pass_counter(output_dir)
     _tmp = get_output_filename(output_dir, counter)
 

@@ -1,7 +1,7 @@
 """Launch the classical ISD estimator (CE for short) from TII. An example run
 is
 
-LOG_LEVEL=error python3 -m isdleda.launchers.CE.launch_CE -p 64 --max-tasks 1 --chunksize 1 --out-format json --input $MDIR_LINUX_DATA/vc/leda_design/stime_ISD/isd-leda/values/S3/2_leda2isd/isd_values.json
+LOG_LEVEL=error python3 -m isdleda.launchers.CE.launch_CE -p 64 --max-tasks 1 --chunksize 1 --out-format json --input $MDIR_LINUX_DATA/vc/leda_design/stime_ISD/orchestra/values/S3/2_leda2isd/isd_values.json
 
 """
 import argparse

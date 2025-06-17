@@ -172,7 +172,7 @@ def main():
 
     dirpath = os.path.join(
         OUT_DIR,
-        "isd-leda",
+        "orchestra",
         "values",
         f"S{stage}",
         "0_exhaustive_generation",
