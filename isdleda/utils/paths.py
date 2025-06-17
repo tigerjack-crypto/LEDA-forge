@@ -1,6 +1,6 @@
 from os.path import join
 
-OUT_DIR = join("..", "leda_design", "stime_ISD")
+OUT_DIR = join("..", "leda_design", "stime_ISD", "out")
 OUT_FILES_PART_FMT = ("{n:06}_{k:06}_{w:03}.{ext}")
 # if TYPE_CHECKING:
 #     from measures.common import ValueDicts  # , Code, SecurityLevels
