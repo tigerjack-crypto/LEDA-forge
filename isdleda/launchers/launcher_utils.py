@@ -2,6 +2,8 @@ import argparse
 import csv
 import logging
 import os
+import shutil
+import subprocess
 from enum import IntEnum
 from pathlib import Path
 from typing import List, Optional
@@ -145,13 +147,52 @@ def get_qc_reduction_kra3(leda_val):
     return np.log2(leda_val.p)
 
 
-def get_git_commit(path):
-    """Get git commit from file"""
-    with open(os.path.join(path, 'git-commit.txt'), 'r') as f:
-        git_commit = f.readline().strip()
-    return git_commit
-    # result = subprocess.run(["git", "rev-parse", "HEAD"],
-    #                         cwd=path,
-    #                         capture_output=True,
-    #                         text=True,
-    #                         check=True)
+def get_git_commit(path, fallback_file="git-commit.txt"):
+    # Option 1: Use git if available
+    if shutil.which("git"):
+        try:
+            result = subprocess.run(["git", "rev-parse", "HEAD"],
+                                    cwd=path,
+                                    capture_output=True,
+                                    text=True,
+                                    check=True)
+            return result.stdout.strip()
+        except subprocess.CalledProcessError:
+            pass  # Fall through to file-based methods
+
+    # Option 2: Read from .git/HEAD manually
+    try:
+        git_dir_path = os.path.join(path, '.git')
+        if os.path.isfile(git_dir_path):
+            # .git is a text file pointing to the actual git dir
+            with open(git_dir_path) as f:
+                line = f.readline().strip()
+                if line.startswith('gitdir:'):
+                    git_dir = os.path.normpath(
+                        os.path.join(path, line[7:].strip()))
+                else:
+                    raise ValueError("Invalid .git file format.")
+        else:
+            git_dir = git_dir_path
+
+        head_path = os.path.join(git_dir, 'HEAD')
+        with open(head_path) as f:
+            head_contents = f.readline().strip()
+
+        if head_contents.startswith("ref:"):
+            ref_path = os.path.join(git_dir, head_contents[5:])
+            with open(ref_path) as ref_file:
+                return ref_file.readline().strip()
+        else:
+            return head_contents
+    except Exception:
+        pass  # Fall through to fallback file
+
+    # Option 3: Read from fallback file
+    fallback_path = os.path.join(path, fallback_file)
+    if os.path.isfile(fallback_path):
+        with open(fallback_path) as f:
+            return f.readline().strip()
+
+    raise RuntimeError(
+        "Unable to determine submodule commit: all methods failed.")
