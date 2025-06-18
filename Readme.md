@@ -93,10 +93,16 @@ python3 -m ledaforge.launchers.LT.launch_LT --threads 2 --json "$MDIR_LINUX_DATA
 The CryptAttackTester (CAT) source code can be retrieved from one of the original
 authors blog, that I report here for simplicity
 [link](https://cat.cr.yp.to/cryptattacktester-20231020.tar.gz).
+To add it to your local project, use
+```bash
+wget https://cat.cr.yp.to/cryptattacktester-20231020.tar.gz
+tar -xf cryptattacktester-20231020.tar.gz -C submodules
+rm cryptattacktester-20231020.tar.gz
+```
 
 Since the original source code requires compilation, you need to generate the binaries from the submodule.
 ```bash
-cd ./submodules/CryptAttackTester/
+cd ./submodules/cryptattacktester-20231020/
 make -j
 ```
 
