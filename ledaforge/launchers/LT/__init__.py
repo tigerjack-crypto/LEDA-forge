@@ -1,5 +1,4 @@
 import os
-import sys
 
 thisdir = os.path.dirname(os.path.realpath(__file__))
 bin_path = os.path.join(thisdir, "..", "..", "..", "submodules", "LEDATools", "bin")
