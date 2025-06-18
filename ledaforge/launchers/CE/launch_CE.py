@@ -82,7 +82,8 @@ def parse_arguments():
         (f"Comma-separated list of algorithm names to exclude from execution.\n"
          f"Available algorithms that can be excluded: {', '.join(available_algos)}.\n"
          f"By default, CE excludes the following algorithms: BJMMd2, BJMMd3, MayOzerovD2, MayOzerovD3.\n"
-         f"Example usage: --exclude-algos=\"Dumer,Prange\""))
+         f"Example usage: --exclude-algos=\"Dumer,Prange\""),
+        default="")
     return parser
 
 
