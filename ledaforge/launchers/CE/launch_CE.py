@@ -15,14 +15,14 @@ from cryptographic_estimators.SDEstimator import (BJMM, BallCollision, BJMMdw,
                                                   BJMMpdw, BJMMplus, BothMay,
                                                   Dumer, MayOzerov, Prange,
                                                   SDEstimator, Stern)
-from isdleda.launchers.launcher_utils import (MemAccess,
+from ledaforge.launchers.launcher_utils import (MemAccess,
                                               argparse_check_positive,
                                               get_git_commit, get_no_of_files,
                                               init_logger)
-from isdleda.utils.common import ISDValue, dict_to_isd_value
-from isdleda.utils.export.export import (load_from_json, save_to_json,
+from ledaforge.utils.common import ISDValue, dict_to_isd_value
+from ledaforge.utils.export.export import (load_from_json, save_to_json,
                                          save_to_pickle)
-from isdleda.utils.paths import OUT_DIR, OUT_FILES_PART_FMT
+from ledaforge.utils.paths import OUT_DIR, OUT_FILES_PART_FMT
 
 # Map string names to actual algorithm classes/functions
 ALGO_NAME_MAP = {

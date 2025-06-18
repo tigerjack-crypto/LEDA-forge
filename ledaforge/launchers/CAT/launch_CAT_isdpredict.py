@@ -12,8 +12,8 @@ import sys
 import time
 from datetime import datetime
 
-from isdleda.launchers.CAT.utils.attacks_list import attacks0, attacks1, attacks2
-from isdleda.launchers.CAT.utils.file_mgmt import OUT_DIR, OUT_FILE
+from ledaforge.launchers.CAT.utils.attacks_list import attacks0, attacks1, attacks2
+from ledaforge.launchers.CAT.utils.file_mgmt import OUT_DIR, OUT_FILE
 
 # Fixed values, stop at 1st iteration
 ATTACK_ITERATIONS = 'I=1,RE=1,X=1,YX=1'

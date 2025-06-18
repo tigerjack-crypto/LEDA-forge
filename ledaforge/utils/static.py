@@ -1,6 +1,6 @@
 import csv
 from typing import Tuple
-from isdleda.utils.paths import PRIMES_FILE_CSV
+from ledaforge.utils.paths import PRIMES_FILE_CSV
 
 @staticmethod
 def get_primes() -> Tuple[int, ...]:

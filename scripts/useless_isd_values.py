@@ -1,7 +1,7 @@
 import json
 import os
-from isdleda.utils.export.export import save_to_json
-# from isdleda.utils.paths import ISD_VALUES_FILE_JSON
+from ledaforge.utils.export.export import save_to_json
+# from ledaforge.utils.paths import ISD_VALUES_FILE_JSON
 from dataclasses import asdict
 
 # Official NIST values

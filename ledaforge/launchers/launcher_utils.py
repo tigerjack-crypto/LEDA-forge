@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import List, Optional
 
 import numpy as np
-from isdleda.utils.common import ISDValue
+from ledaforge.utils.common import ISDValue
 
 # Path to the submodule (relative to the main repo root)
 submodule_path = Path("path/to/your/submodule")
@@ -93,7 +93,7 @@ def init_logger(logger, out_file: str, log_level: Optional[str] = None):
 
 def get_proper_leda_primes() -> List[int]:
     proper_primes = []
-    with open('./isdleda/assets/proper_primes.csv', 'r',
+    with open('./ledaforge/assets/proper_primes.csv', 'r',
               newline='') as csvfile:
         reader = csv.reader(csvfile)
         # actually there's just one row

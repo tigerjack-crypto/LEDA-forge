@@ -6,7 +6,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Dict, List
 
-from isdleda.utils.common import (Attack, ISDValue, LEDAValue,
+from ledaforge.utils.common import (Attack, ISDValue, LEDAValue,
                                   LEDAValueAttackCost, dict_to_isd_value,
                                   dict_to_leda_value)
 

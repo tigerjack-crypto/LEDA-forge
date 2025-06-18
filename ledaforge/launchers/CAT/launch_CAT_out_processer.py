@@ -9,7 +9,7 @@ import re
 from collections import defaultdict
 from sys import argv
 
-from isdleda.utils.paths import OUT_DIR, OUT_FILES_PART_FMT
+from ledaforge.utils.paths import OUT_DIR, OUT_FILES_PART_FMT
 
 OUT_FILES_CAT_DIR: str = os.path.join(OUT_DIR, "CAT", ("txt-isd{isd}"))
 OUT_FILES_CAT_FMT: str = os.path.join(OUT_FILES_CAT_DIR, OUT_FILES_PART_FMT)

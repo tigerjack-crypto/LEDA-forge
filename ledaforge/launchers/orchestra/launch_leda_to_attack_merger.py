@@ -6,15 +6,15 @@ from sys import argv
 from typing import Dict, List, Tuple
 
 import numpy as np
-from isdleda.launchers.launcher_utils import (
+from ledaforge.launchers.launcher_utils import (
     AES_LAMBDAS, QAES_LAMBDAS, get_kra1_from_leda, get_kra2_from_leda,
     get_kra3_from_leda, get_mra_from_leda, get_pass_counter,
     get_qc_reduction_kra1, get_qc_reduction_kra2, get_qc_reduction_kra3,
     get_qc_reduction_mra, set_pass_counter)
-from isdleda.utils.common import Attack, ISDValue, LEDAValueAttackCost
-from isdleda.utils.export.export import (from_csv_to_ledavalue, load_from_json,
+from ledaforge.utils.common import Attack, ISDValue, LEDAValueAttackCost
+from ledaforge.utils.export.export import (from_csv_to_ledavalue, load_from_json,
                                          save_ledavalues_attack_cost_to_csv)
-from isdleda.utils.paths import OUT_DIR
+from ledaforge.utils.paths import OUT_DIR
 
 
 def check_dataset_LT(attack_dir: str, isd_val: ISDValue, reduction,

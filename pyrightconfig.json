@@ -1,7 +1,7 @@
 {
     "typeCheckingMode": "basic",
     "include": [
-        "isdleda"
+        "ledaforge"
     ],
     "exclude": [
         "**/__pycache__",

@@ -4,7 +4,7 @@ import argparse
 import subprocess
 import os
 
-from isdleda.utils.paths import OUT_DIR
+from ledaforge.utils.paths import OUT_DIR
 # from pathlib import Path
 
 

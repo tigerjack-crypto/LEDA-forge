@@ -18,29 +18,29 @@ instances for use in post-quantum cryptographic applications.
 
 ## Organization
 
-- `isdleda.launchers.CE`: CryptographicEstimators for ISD cost estimation (field
+- `ledaforge.launchers.CE`: CryptographicEstimators for ISD cost estimation (field
   operations, different memory models).
-- `isdleda.launchers.LT`: LEDAtools for classical (bit-operations, logarithmic
+- `ledaforge.launchers.LT`: LEDAtools for classical (bit-operations, logarithmic
   memory) and quantum decoding (gate-based, no QRAM).
-- `isdleda.launchers.CAT`: CryptAttackTester for additional ISD complexities
+- `ledaforge.launchers.CAT`: CryptAttackTester for additional ISD complexities
   (bit-level, combinatorial circuit unrolling).
-- `isdleda.launchers.orchestra.*`: Orchestrators for coordinating generation and conversion.
+- `ledaforge.launchers.orchestra.*`: Orchestrators for coordinating generation and conversion.
 
 ## ISD LEDA Values Generation Steps
 
 ### Stage 0
 
 - Generate an exhaustive list of LEDA parameter values in CSV format `<n0, p, v,
-  t>` using `isdleda.launchers.orchestra.launch_values_generation`
+  t>` using `ledaforge.launchers.orchestra.launch_values_generation`
 - Derive the corresponding ISD parameter sets (note that there are 4 ISD attack
   parameter for each LEDA value) in JSON format `<n, k, w>` using
-  `isdleda.launchers.orchestra.launch_leda_to_isd_converter`
+  `ledaforge.launchers.orchestra.launch_leda_to_isd_converter`
 
 ### Stage *i > 0*
 
 - Compute ISD complexities using external tools (see [Tools](#ISD-Tools)
 - Merge previous-stage LEDA values with estimates of their computational
-  complexity `isdleda.launchers.orchestra.launch_leda_to_attack_merger`. The
+  complexity `ledaforge.launchers.orchestra.launch_leda_to_attack_merger`. The
   script additionally apply reduction models (e.g., DOOM) and filter for values
   where cost $\geq c \lambda$, where $\lambda$ is a threshold security level, and $c$ a threshold percentage.
   The lambda values, as specified or derived from NIST, are
@@ -59,15 +59,15 @@ This section provides descriptions and usage details for the tools integrated
 into the workflow.
 
 Each tool outputs a list of files named as `{n:06}_{k:06}_{w:03}` in a specific
-folder. Check `isdleda.utils.paths` for further info.
+folder. Check `ledaforge.utils.paths` for further info.
 
 ## Cryptographic Estimators (CE):
 Original tool, developed by TII, can be found
 [here](https://github.com/Crypto-TII/CryptographicEstimators). The custom
-launcher can be run using `isdleda.launchers.CE.launch_CE`. An example run is
+launcher can be run using `ledaforge.launchers.CE.launch_CE`. An example run is
 
 ```bash
-LOG_LEVEL=error python3 -m isdleda.launchers.CE.launch_CE --poolsize 64 --max-tasks 1 --chunksize 1 --out-format json --input $MDIR_LINUX_DATA/vc/leda_design/stime_ISD/out/orchestra/values/S3/2_leda2isd/isd_values.json --excluded-algos=Dumer,Stern,BJMM
+LOG_LEVEL=error python3 -m ledaforge.launchers.CE.launch_CE --poolsize 64 --max-tasks 1 --chunksize 1 --out-format json --input $MDIR_LINUX_DATA/vc/leda_design/stime_ISD/out/orchestra/values/S3/2_leda2isd/isd_values.json --excluded-algos=Dumer,Stern,BJMM
 ```
 
 ## LEDATools (LT)
@@ -82,11 +82,11 @@ cmake -DCMAKE_INSTALL_PREFIX=.. ..
 make install -j
 ```
 
-Then, you can run the custom launcher script `isdleda.launchers.LT.launch_LT`.
+Then, you can run the custom launcher script `ledaforge.launchers.LT.launch_LT`.
 An example run is:
 
 ```bash
-python3 -m isdleda.launchers.LT.launch_LT --threads 32 --json ../leda_design/stime_ISD/orchestra/values/S3/2_leda2isd/isd_values.json --out BJMM
+python3 -m ledaforge.launchers.LT.launch_LT --threads 32 --json ../leda_design/stime_ISD/orchestra/values/S3/2_leda2isd/isd_values.json --out BJMM
 
 ```
 
@@ -101,14 +101,14 @@ cd ./submodules/CryptAttackTester/
 make -j
 ```
 
-The script launcher `isdleda.launchers.CAT.launch_CAT_isdpredict`, heavily based
+The script launcher `ledaforge.launchers.CAT.launch_CAT_isdpredict`, heavily based
 on the `isdpredict1.py` script provided by the CAT authors, can then be used to
 generate the ISD estimates.
 
 
 Example usage:
 ```bash
-python3 -m isdleda.launchers.CAT.launch_CAT_isdpredict --isd_csv isdleda/launchers/CAT/isd_leda.csv --start 62 --end 63 --isd_level 2 --processes 12 --add_hostname
+python3 -m ledaforge.launchers.CAT.launch_CAT_isdpredict --isd_csv ledaforge/launchers/CAT/isd_leda.csv --start 62 --end 63 --isd_level 2 --processes 12 --add_hostname
 ```
 
 Note: This tool is resource-intensive at higher ISD levels. To run it on
@@ -125,7 +125,7 @@ Then, to process the final merged output, and put each ISD value in a separate
 file together with its best attack, execute
 
 ```bash
-python3 -m isdleda.launchers.launch_cat_out_processer all.out 2
+python3 -m ledaforge.launchers.launch_cat_out_processer all.out 2
 ```
 
 
