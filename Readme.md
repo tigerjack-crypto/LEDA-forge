@@ -18,14 +18,13 @@ instances for use in post-quantum cryptographic applications.
 
 ## Organization
 
-The project is organized in successive stages:
-
-- **Stage 0**: Generate initial LEDA values and corresponding ISD inputs.
-- **Stage *i > 0***: Run external estimators, apply reductions, and filter based
-  on target security levels.
-
-Each stage is coordinated using launcher scripts under the
-`isdleda.launchers.orchestra` module.
+- `isdleda.launchers.CE`: CryptographicEstimators for ISD cost estimation (field
+  operations, different memory models).
+- `isdleda.launchers.LT`: LEDAtools for classical (bit-operations, logarithmic
+  memory) and quantum decoding (gate-based, no QRAM).
+- `isdleda.launchers.CAT`: CryptAttackTester for additional ISD complexities
+  (bit-level, combinatorial circuit unrolling).
+- `isdleda.launchers.orchestra.*`: Orchestrators for coordinating generation and conversion.
 
 ## ISD LEDA Values Generation Steps
 
