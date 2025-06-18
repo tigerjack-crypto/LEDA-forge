@@ -15,7 +15,11 @@ from multiprocessing import Pool
 from typing import Iterable, Optional, Sequence
 
 import psutil
-from cryptographic_estimators.SDEstimator import SDEstimator
+# Import all the algorithms you want to allow for exclusion
+from cryptographic_estimators.SDEstimator import (BJMM, BallCollision, BJMMdw,
+                                                  BJMMpdw, BJMMplus, BothMay,
+                                                  Dumer, MayOzerov, Prange,
+                                                  SDEstimator, Stern)
 from isdleda.launchers.launcher_utils import (MemAccess,
                                               argparse_check_positive,
                                               get_git_commit, get_no_of_files,
@@ -25,22 +29,24 @@ from isdleda.utils.export.export import (load_from_json, save_to_json,
                                          save_to_pickle)
 from isdleda.utils.paths import OUT_DIR, OUT_FILES_PART_FMT
 
-# BallCollision, BJMM, BJMMdw, BJMMpdw, BJMMplus, BothMay, Dumer, MayOzerov, Prange, Stern
-# from cryptographic_estimators.SDEstimator import (
-#     # Prange,
-#     # Dumer,
-#     # Stern,
-#     BJMMdw,
-#     MayOzerov,
-#     BJMM,
-#     BallCollision,
-#     BJMMpdw,
-#     BJMMplus,
-#     BothMay,
-#     )
+# Map string names to actual algorithm classes/functions
+ALGO_NAME_MAP = {
+    "BJMM": BJMM,
+    "BallCollision": BallCollision,
+    "BJMMdw": BJMMdw,
+    "BJMMpdw": BJMMpdw,
+    "BJMMplus": BJMMplus,
+    "BothMay": BothMay,
+    "BM": BothMay,
+    "Dumer": Dumer,
+    "MayOzerov": MayOzerov,
+    "MO": MayOzerov,
+    "Prange": Prange,
+    "Stern": Stern
+}
 
 OUT_FILES_CE_TYPE_DIR: str = os.path.join(OUT_DIR, "CE", "{ce_commit}",
-                                           "{out_type}")
+                                          "{out_type}")
 OUT_FILES_CE_DIR: str = os.path.join(OUT_FILES_CE_TYPE_DIR, "{memaccess}")
 OUT_FILES_CE_FMT: str = os.path.join(OUT_FILES_CE_DIR, OUT_FILES_PART_FMT)
 
@@ -71,17 +77,28 @@ def parse_arguments():
     parser.add_argument("--out-format", choices=["pkl", "json"], default="pkl")
     parser.add_argument("--input",
                         help="Input file name containing the isd values")
+    # Build the help text dynamically
+    available_algos = sorted(set(ALGO_NAME_MAP.keys()))
+
+    parser.add_argument(
+        "--exclude-algos",
+        type=str,
+        help=
+        (f"Comma-separated list of algorithm names to exclude from execution.\n"
+         f"Available algorithms that can be excluded: {', '.join(available_algos)}.\n"
+         f"By default, CE excludes the following algorithms: BJMMd2, BJMMd3, MayOzerovD2, MayOzerovD3.\n"
+         f"Example usage: --exclude-algos=\"Dumer,Prange\""))
     return parser
 
 
 def _get_out_file(mem_access, out_type, value, file_ext, ce_commit):
     out_file = OUT_FILES_CE_FMT.format(memaccess=mem_access.name,
-                                        out_type=out_type,
-                                        n=value.n,
-                                        k=value.k,
-                                        w=value.w,
-                                        ext=file_ext,
-                                        ce_commit=ce_commit[:6])
+                                       out_type=out_type,
+                                       n=value.n,
+                                       k=value.k,
+                                       w=value.w,
+                                       ext=file_ext,
+                                       ce_commit=ce_commit[:6])
     return out_file
 
 
@@ -114,19 +131,15 @@ def _group_by_n_k(values: Iterable[ISDValue]):
     return values_dict
 
 
-def isd_compute(arg, out_type: str, file_ext: str, ce_commit: str):
+def isd_compute(arg, out_type: str, file_ext: str, ce_commit: str,
+                skip_algos: list):
     # should be a list of values having same n and r
-    # excluded_algorithms_by_default = [BJMMd2, BJMMd3, MayOzerovD2, MayOzerovD3]
     pid = os.getpid()
     process = psutil.Process(pid)
     mem_mb = process.memory_info().rss / (1024 * 1024)  # Convert to MB
     LOGGER.info(f"Starting task with PID={pid}, memory={mem_mb:.2f} MB")
     values_grouped: Sequence[ISDValue] = arg
     LOGGER.debug(f"Computing {values_grouped}")
-    # skip_algos = [
-    #     BJMM, BallCollision, BJMMdw, BJMMpdw, BJMMplus, BothMay, MayOzerov
-    # ] + SDEstimator.excluded_algorithms_by_default
-    skip_algos = SDEstimator.excluded_algorithms_by_default
     t0 = time.perf_counter()
     for value in values_grouped:
         # The idea is that Prange is not influenced much by the memory
@@ -240,10 +253,26 @@ def main(raw_args: Optional[list[str]] = None):
     # t0 = datetime.now()
     # LOGGER.debug(f"Starting processing at {t0}")
 
+    exclude_names = [
+        name.strip() for name in namespace.exclude_algos.split(",")
+        if name.strip()
+    ]
+    # Map names to actual classes/functions
+    skip_algos = []
+    for name in exclude_names:
+        if name in ALGO_NAME_MAP:
+            skip_algos.append(ALGO_NAME_MAP[name])
+        else:
+            print(f"Warning: Unknown algorithm '{name}' will be ignored.")
+
+    # Add the default excluded algorithms
+    skip_algos = skip_algos + SDEstimator.excluded_algorithms_by_default
+
     isd_compute_partial = functools.partial(isd_compute,
                                             out_type=out_type,
                                             file_ext=file_ext,
-                                            ce_commit=ce_commit)
+                                            ce_commit=ce_commit,
+                                            skip_algos=skip_algos)
     print(f"Using: {namespace.poolsize} processes ")
     print(f"ISD values no: {len(isd_values)} for each MEM level")
     ts = datetime.now()
