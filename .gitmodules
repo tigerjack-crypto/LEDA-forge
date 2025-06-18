@@ -1,10 +1,6 @@
 [submodule "submodules/cryptographic_estimators"]
 	path = submodules/cryptographic_estimators
 	url = git@github.com:tigerjack-crypto/CryptographicEstimators.git
-[submodule "submodules/CryptAttackTester"]
-	path = submodules/CryptAttackTester
-	url = git@github.com:tigerjack-crypto/LEDAtools.git
-	branch = main
 [submodule "submodules/LEDATools"]
 	path = submodules/LEDATools
 	url = git@github.com:tigerjack-crypto/LEDAtools.git
