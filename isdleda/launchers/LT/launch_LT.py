@@ -1,8 +1,4 @@
 """Simple script to launch the LEDATools work_factor_computation script.
-As an example, the script can be launched as
-
---threads 32 --json ../leda_design/stime_ISD/orchestra/values/S3/2_leda2isd/isd_values.json --out BJMM
-
 """
 import argparse
 import subprocess

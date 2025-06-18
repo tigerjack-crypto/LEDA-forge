@@ -1,7 +1,4 @@
-"""Launch the CAT searchparams utils. For now it expects the searchparams, and
-all the scripts, in the root location of this project. Should be modified
-though.
-
+"""Launch the CAT searchparams utils.
 """
 import argparse
 import csv
@@ -175,7 +172,7 @@ def handle(task):
 def get_command_content(problem, attack, attack_iterations):
     p_to_txt = f"N={problem['n']},K={problem['k']},W={problem['w']}"
     command = [
-        './searchparams',
+        'searchparams',
         'problem=uniformmatrix',
         p_to_txt,
         attack,
