@@ -30,14 +30,17 @@ instances for use in post-quantum cryptographic applications.
 
 ### Stage 0
 
-- Generate an exhaustive list of LEDA parameter values in CSV format `<n0, p, v,
-  t>` using `ledaforge.launchers.orchestra.launch_values_generation`
-- Derive the corresponding ISD parameter sets (note that there are 4 ISD attack
-  parameter for each LEDA value) in JSON format `<n, k, w>` using
-  `ledaforge.launchers.orchestra.launch_leda_to_isd_converter`
+- Generate an exhaustive list of LEDA parameter values in CSV format `<n0, p, v, t>`
+  using `ledaforge.launchers.orchestra.launch_values_generation`.
 
-### Stage *i > 0*
+### Stage $i > 0$
+- For each LEDA value coming from the previous stage, derive the ISD parameter
+  sets (note that there are 4 ISD attack parameter for each LEDA value) in JSON
+  format `<n, k, w>` using
+  `ledaforge.launchers.orchestra.launch_leda_to_isd_converter`. Ex.
+  ```bash
 
+  ```
 - Compute ISD complexities using external tools (see [Tools](#ISD-Tools)
 - Merge previous-stage LEDA values with estimates of their computational
   complexity `ledaforge.launchers.orchestra.launch_leda_to_attack_merger`. The
@@ -46,8 +49,12 @@ instances for use in post-quantum cryptographic applications.
   The lambda values, as specified or derived from NIST, are
   - Classical: 143, 207, 272
   - Quantum: 154, 219, 283
+  An example usage is
+  ```bash
+  python3 -m ledaforge.launchers.orchestra.launch_leda_to_attack_merger 1 ../leda_design/stime_ISD/out/orchestra/values/S0/exhaustive_generation/ ../leda_design/stime_ISD/out/LT/Stern LT 1
+  ```
 - Perform a Decoding Failure Rate (DFR) analysis on filtered results using
-  external tools.
+  external tools, and output a new set of LEDA values.
 
 # ISD Tools
 The tools used to estimate the computational complexity of ISD attack parameters

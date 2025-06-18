@@ -1,17 +1,17 @@
 """Given a list (in csv) of leda values, output the ISD attack list (json)"""
+import argparse
 import os
 from itertools import chain
 from multiprocessing import Pool
-from sys import argv
 from typing import List
 
 from ledaforge.launchers.launcher_utils import (
     get_kra1_from_leda, get_kra2_from_leda, get_kra3_from_leda,
     get_mra_from_leda, get_pass_counter, set_pass_counter)
-from ledaforge.utils.paths import OUT_DIR
 from ledaforge.utils.common import ISDValue
 from ledaforge.utils.export.export import (ISDValueEncoder,
-                                         from_csv_to_ledavalue, save_to_json)
+                                           from_csv_to_ledavalue, save_to_json)
+from ledaforge.utils.paths import OUT_DIR
 
 
 def worker(level, input_dir):
@@ -51,24 +51,38 @@ def get_output_filename(output_dir, counter):
 
 
 def main():
-    stage = argv[1]  # the stage in which we are in
-    input_dir = argv[2]  # The directory containing the CSV files
-    try:
-        update_counter = bool(int(argv[3]))
-    except:
-        update_counter = True
-    print(f"Update counter {update_counter}")
+    parser = argparse.ArgumentParser(
+        description="Generate ISD values from LEDA values.")
 
-    output_dir = os.path.join(f"{OUT_DIR}", "orchestra", "values", f"S{stage}")
+    parser.add_argument("--stage",
+                        "-s",
+                        type=int,
+                        required=True,
+                        help="The stage in which we are in.")
+    parser.add_argument(
+        "--input-dir",
+        "-i",
+        type=str,
+        required=True,
+        help="Directory containing the CSV files of LEDA values.")
+    parser.add_argument("--update-counter",
+                        "-u",
+                        action="store_true",
+                        help="Boolean. Update the counter.txt file.")
+
+    args = parser.parse_args()
+
+    output_dir = os.path.join(f"{OUT_DIR}", "orchestra",
+                              f"S{args.stage}")
     counter = get_pass_counter(output_dir)
     _tmp = get_output_filename(output_dir, counter)
 
     print(f"Results will be in {_tmp}")
     levels = [1, 3, 5]
 
-    args = [(level, input_dir) for level in levels]
+    fun_args = [(level, args.input_dir) for level in levels]
     with Pool() as pool:
-        results = pool.starmap(worker, args)  # results is a list of lists
+        results = pool.starmap(worker, fun_args)  # results is a list of lists
     all_values = list(chain.from_iterable(results))  # Native memory, fast
     print(f"{len(all_values)} before removing duplicates")
     isd_vals = list(set(all_values))
@@ -77,7 +91,7 @@ def main():
     filename = os.path.join(_tmp, "isd_values.json")
     print(f"Output file {filename}")
     save_to_json(filename, isd_vals, cls=ISDValueEncoder)
-    if update_counter:
+    if args.update_counter:
         set_pass_counter(output_dir, counter + 1)
 
 

@@ -9,7 +9,7 @@ from dataclasses import asdict
 from itertools import product
 # from concurrent.futures import ProcessPoolExecutor
 from multiprocessing import Pool
-from sys import argv
+# from sys import argv
 from typing import Dict, List, Set
 
 import numpy as np
@@ -159,7 +159,7 @@ def worker(leda_primes, level_idx, c_lambda):
 
 
 def main():
-    stage = argv[1]  # the stage in which we are in
+    # stage = argv[1]  # the stage in which we are in
     leda_primes = get_proper_leda_primes()
     leda_values_t_by_level: Dict[int, Dict[str, Set[LEDAValue]]] = defaultdict(
         lambda: defaultdict(set))
@@ -173,9 +173,9 @@ def main():
     dirpath = os.path.join(
         OUT_DIR,
         "orchestra",
-        "values",
-        f"S{stage}",
-        "0_exhaustive_generation",
+        # f"S{stage}",
+        "S0",
+        "exhaustive_generation",
     )
     if not os.path.exists(dirpath):
         os.mkdir(dirpath)

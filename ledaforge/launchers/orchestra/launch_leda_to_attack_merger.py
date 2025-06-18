@@ -1,8 +1,8 @@
 """Add c_time and q_time to LEDA parameters (p, n0, v, t).
 """
+import argparse
 import functools
 import os
-from sys import argv
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -12,8 +12,9 @@ from ledaforge.launchers.launcher_utils import (
     get_qc_reduction_kra1, get_qc_reduction_kra2, get_qc_reduction_kra3,
     get_qc_reduction_mra, set_pass_counter)
 from ledaforge.utils.common import Attack, ISDValue, LEDAValueAttackCost
-from ledaforge.utils.export.export import (from_csv_to_ledavalue, load_from_json,
-                                         save_ledavalues_attack_cost_to_csv)
+from ledaforge.utils.export.export import (from_csv_to_ledavalue,
+                                           load_from_json,
+                                           save_ledavalues_attack_cost_to_csv)
 from ledaforge.utils.paths import OUT_DIR
 
 
@@ -23,74 +24,76 @@ def check_dataset_LT(attack_dir: str, isd_val: ISDValue, reduction,
         attack_dir, f"{isd_val.n:06}_{isd_val.k:06}_{isd_val.w:03}.json")
 
     data = load_from_json(filename)
-    # try:
-    #     data = load_from_json(filename)
-    # except FileNotFoundError as e:
-    #     print(f"Unable to load data from file {filename}")
-    #     return np.inf, np.inf
 
     c_time = data['Classic']['Plain']['value'] - reduction
     q_time = (data['Quantum']['Plain']['value']) * 2 - reduction
-    # if c_time < 0 or q_time < 0:
-    #     print(f"{msg}")
-    #     raise Exception(
-    #         f"Value less than 0 for {filename}, with reduction {reduction}: {c_time}, {q_time}"
-    #     )
     return c_time, q_time
 
 
-def check_dataset_CE(mem_cost: str, attack_dir: str, isd_val: ISDValue, reduction,
-                     msg) -> Tuple[float, float]:
+def check_dataset_CE(mem_cost: str, attack_dir: str, isd_val: ISDValue,
+                     reduction, msg) -> Tuple[float, float]:
     filename = os.path.join(
-        attack_dir, f"MEM_{mem_cost}", f"{isd_val.n:06}_{isd_val.k:06}_{isd_val.w:03}.json")
+        attack_dir, f"MEM_{mem_cost}",
+        f"{isd_val.n:06}_{isd_val.k:06}_{isd_val.w:03}.json")
     data = load_from_json(filename)
-    # try:
-    #     data = load_from_json(filename)
-    # except:
-    #     print(f"Unable to load data from file {filename}")
-    #     return np.inf, np.inf
     c_time = data["MinimumTime"][1]["estimate"]["time"] - reduction
-    # q_time = (data['Quantum']['Plain']['value']) * 2 - reduction
     q_time = np.inf
     return c_time, q_time
-
 
 
 def check_dataset_CAT(attack_dir: str, isd_val: ISDValue, reduction,
                       msg) -> Tuple[float, float]:
     filename = os.path.join(
         attack_dir, f"{isd_val.n:06}_{isd_val.k:06}_{isd_val.w:03}.txt")
-    # if not os.path.exists(filename):
-    #     print(f"File not existing {filename}")
-    #     return np.inf, np.inf
-    # print(filename)
     with open(filename, 'r') as infile:
         line = infile.readline()
-        value = float(line)  - reduction
-        # print(line)
+        value = float(line) - reduction
         return value, np.inf
 
 
 def main():
-    # the stage in which we are in
-    stage = int(argv[1])
-    # The directory containing the CSV files of LEDA values
-    input_dir = argv[2]
-    # The directory containing the json files containing ISD attacks
-    attack_dir = argv[3]
-    # the tool used, like LT (LEDATools), CE (CryptographicEstimators), CAT (CryptAttackTester)
-    tool = argv[4]
-    # if to check for the threshold, boolean
-    check_threshold = bool(int(argv[5]))
-    # if to update the counter, default to True
-    try:
-        update_counter = bool(int(argv[6]))
-    except:
-        update_counter = True
-    print(f"stage {stage}, check_threshold {check_threshold}, update counter {update_counter}")
+    parser = argparse.ArgumentParser(
+        description="Merga LEDA values with their corresponding attack values.")
 
+    parser.add_argument("--stage",
+                        "-s",
+                        type=int,
+                        required=True,
+                        help="The stage in which we are in.")
+    parser.add_argument(
+        "--input-dir",
+        "-i",
+        type=str,
+        required=True,
+        help="Directory containing the CSV files of LEDA values.")
+    parser.add_argument(
+        "--attack-dir",
+        "-a",
+        type=str,
+        required=True,
+        help="Directory containing the JSON files containing ISD attacks.")
+    parser.add_argument("--tool",
+                        "-t",
+                        type=str,
+                        choices=["LT", "CE", "CAT"],
+                        required=True,
+                        help="Tool used: LT, CE, or CAT.")
+    parser.add_argument("--check-threshold",
+                        "-c",
+                        action="store_true",
+                        help="Boolean. Check for lambda threshold.")
+    parser.add_argument("--update-counter",
+                        "-u",
+                        action="store_true",
+                        help="Boolean. Update the counter.txt file.")
 
-    match tool:
+    args = parser.parse_args()
+
+    print(
+        f"stage {args.stage}, check_threshold {args.check_threshold}, update counter {args.update_counter}"
+    )
+
+    match args.rtool:
         case 'LT':
             check_dataset = check_dataset_LT
         case 'CAT':
@@ -104,7 +107,8 @@ def main():
         case 'CE_CBRT':
             check_dataset = functools.partial(check_dataset_CE, 'CBRT')
 
-    output_dir = os.path.join(f"{OUT_DIR}", "orchestra", "values", f"S{stage}")
+    output_dir = os.path.join(f"{OUT_DIR}", "orchestra", 
+                              f"S{args.stage}")
     counter = get_pass_counter(output_dir)
     _tmp = os.path.join(output_dir, f"{counter}_leda2attack")
     # _was_existing = False
@@ -115,14 +119,14 @@ def main():
     missing_counter = 0
 
     for level_idx, level in enumerate((1, 3, 5)):
-        filename_in = os.path.join(input_dir, f"cat_{level}_region")
+        filename_in = os.path.join(args.input_dir, f"cat_{level}_region")
         # filename_in = f"{OUT_DIR}/post_dfr_in/{ITERATION_IN}/cat_{level}_region"
         leda_values = from_csv_to_ledavalue(f"{filename_in}.csv")
         print(f"found {len(leda_values)} in {filename_in}")
         c_lambda = AES_LAMBDAS[int(level_idx)]
         q_lambda = QAES_LAMBDAS[int(level_idx)]
         # filename_out = f"{OUT_DIR}/post_dfr_in/{ITERATION_IN}/cat_{level}_attacks"
-        filename_out = os.path.join(_tmp, f"cat_{level}_attacks_{tool}")
+        filename_out = os.path.join(_tmp, f"cat_{level}_attacks_{args.tool}")
         leda_values_to_attacks: List[LEDAValueAttackCost] = []
 
         for leda_val in leda_values:
@@ -134,7 +138,7 @@ def main():
             isd_val = get_mra_from_leda(leda_val)
             try:
                 c_aes, q_aes = check_dataset(
-                    attack_dir,
+                    args.attack_dir,
                     isd_val,
                     reduction=get_qc_reduction_mra(leda_val),
                     msg=f"MRA, {leda_val.p} {leda_val.n0} {leda_val.v}")
@@ -156,7 +160,7 @@ def main():
             isd_val = get_kra1_from_leda(leda_val)
             try:
                 c_aes, q_aes = check_dataset(
-                    attack_dir,
+                    args.attack_dir,
                     isd_val,
                     reduction=get_qc_reduction_kra1(leda_val),
                     msg=f"KRA1, {leda_val.p} {leda_val.n0} {leda_val.v}")
@@ -174,7 +178,7 @@ def main():
                 isd_val = get_kra2_from_leda(leda_val)
                 try:
                     c_aes, q_aes = check_dataset(
-                        attack_dir,
+                        args.attack_dir,
                         isd_val,
                         reduction=get_qc_reduction_kra2(leda_val),
                         msg=f"KRA2, {leda_val.p} {leda_val.n0} {leda_val.v}")
@@ -193,7 +197,7 @@ def main():
             isd_val = get_kra3_from_leda(leda_val)
             try:
                 c_aes, q_aes = check_dataset(
-                    attack_dir,
+                    args.attack_dir,
                     isd_val,
                     reduction=get_qc_reduction_kra3(leda_val),
                     msg=f"KRA3, {leda_val.p} {leda_val.n0} {leda_val.v}")
@@ -208,8 +212,8 @@ def main():
             # min c, min q, min c attack, min q attack
             min_c = min(c_costs.items(), key=lambda x: x[1])
             min_q = min(q_costs.items(), key=lambda x: x[1])
-            if check_threshold and (min_c[1] > .75 * c_lambda
-                                    and min_q[1] > .75 * q_lambda):
+            if args.check_threshold and (min_c[1] > .75 * c_lambda
+                                         and min_q[1] > .75 * q_lambda):
                 lvac = LEDAValueAttackCost(leda_val, c_costs, q_costs, min_c,
                                            min_q)
                 leda_values_to_attacks.append(lvac)
@@ -217,7 +221,7 @@ def main():
         save_ledavalues_attack_cost_to_csv(leda_values_to_attacks,
                                            filename_out)
         # write_to_csv(filename_out, csv_values)
-    if update_counter:
+    if args.update_counter:
         set_pass_counter(output_dir, counter + 1)
     print(f"{missing_counter} files missing")
 
