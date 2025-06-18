@@ -17,8 +17,7 @@ from cryptographic_estimators.SDEstimator import (BJMM, BallCollision, BJMMdw,
                                                   SDEstimator, Stern)
 from ledaforge.launchers.launcher_utils import (MemAccess,
                                               argparse_check_positive,
-                                              get_git_commit, get_no_of_files,
-                                              init_logger)
+                                              get_no_of_files, init_logger)
 from ledaforge.utils.common import ISDValue, dict_to_isd_value
 from ledaforge.utils.export.export import (load_from_json, save_to_json,
                                          save_to_pickle)
@@ -40,7 +39,7 @@ ALGO_NAME_MAP = {
     "Stern": Stern
 }
 
-OUT_FILES_CE_TYPE_DIR: str = os.path.join(OUT_DIR, "CE", "{ce_commit}",
+OUT_FILES_CE_TYPE_DIR: str = os.path.join(OUT_DIR, "CE",
                                           "{out_type}")
 OUT_FILES_CE_DIR: str = os.path.join(OUT_FILES_CE_TYPE_DIR, "{memaccess}")
 OUT_FILES_CE_FMT: str = os.path.join(OUT_FILES_CE_DIR, OUT_FILES_PART_FMT)
@@ -87,19 +86,19 @@ def parse_arguments():
     return parser
 
 
-def _get_out_file(mem_access, out_type, value, file_ext, ce_commit):
+def _get_out_file(mem_access, out_type, value, file_ext):
     out_file = OUT_FILES_CE_FMT.format(memaccess=mem_access.name,
                                        out_type=out_type,
                                        n=value.n,
                                        k=value.k,
                                        w=value.w,
                                        ext=file_ext,
-                                       ce_commit=ce_commit[:6])
+                                      )
     return out_file
 
 
 def _process_value(value: ISDValue, out_type: str, file_ext: str,
-                   ce_commit: str):
+                   ):
     to_skip = True
     for mem_access in (
             MemAccess.MEM_CONST,
@@ -108,7 +107,7 @@ def _process_value(value: ISDValue, out_type: str, file_ext: str,
             MemAccess.MEM_CBRT,
     ):
         out_file = _get_out_file(mem_access, out_type, value, file_ext,
-                                 ce_commit)
+                                 )
         if to_skip and os.path.isfile(out_file):
             LOGGER.debug(f"{out_file} already existing, skipping")
             # continue
@@ -127,7 +126,7 @@ def _group_by_n_k(values: Iterable[ISDValue]):
     return values_dict
 
 
-def isd_compute(arg, out_type: str, file_ext: str, ce_commit: str,
+def isd_compute(arg, out_type: str, file_ext: str,
                 skip_algos: list):
     # should be a list of values having same n and r
     pid = os.getpid()
@@ -148,7 +147,7 @@ def isd_compute(arg, out_type: str, file_ext: str, ce_commit: str,
             (MemAccess.MEM_CBRT, ()),
         ):
             out_file = _get_out_file(mem_access, out_type, value, file_ext,
-                                     ce_commit)
+                                     )
             sd = SDEstimator(value.n,
                              value.k,
                              value.w,
@@ -221,10 +220,6 @@ def main(raw_args: Optional[list[str]] = None):
     print(f"Candidate ISD values to compute (estimate): {tot}")
     LOGGER.debug(f"Skip existing is: {namespace.skip_existing}")
 
-    # main_commit = get_git_commit('.')
-    ce_commit = get_git_commit('./submodules/cryptographic_estimators')
-    print(f"CE commit: {ce_commit}")
-
     if namespace.skip_existing:
         no_of_files = get_no_of_files(OUT_FILES_CE_TYPE_DIR, out_type)
         to_process_no = tot - no_of_files
@@ -233,7 +228,7 @@ def main(raw_args: Optional[list[str]] = None):
             _process_value,
             out_type=out_type,
             file_ext=file_ext,
-            ce_commit=ce_commit,
+            # Avoid using CE commit
         )
         LOGGER.debug(f"No. of already existing files: {no_of_files}")
         to_process_list = filter(filter_fun, isd_values)
@@ -267,7 +262,6 @@ def main(raw_args: Optional[list[str]] = None):
     isd_compute_partial = functools.partial(isd_compute,
                                             out_type=out_type,
                                             file_ext=file_ext,
-                                            ce_commit=ce_commit,
                                             skip_algos=skip_algos)
     print(f"Using: {namespace.poolsize} processes ")
     print(f"ISD values no: {len(isd_values)} for each MEM level")
