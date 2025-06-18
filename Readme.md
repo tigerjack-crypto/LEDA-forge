@@ -86,8 +86,7 @@ Then, you can run the custom launcher script `ledaforge.launchers.LT.launch_LT`.
 An example run is:
 
 ```bash
-python3 -m ledaforge.launchers.LT.launch_LT --threads 32 --json ../leda_design/stime_ISD/orchestra/values/S3/2_leda2isd/isd_values.json --out BJMM
-
+python3 -m ledaforge.launchers.LT.launch_LT --threads 2 --json "$MDIR_LINUX_DATA"/vc/crypto/leda_design/stime_ISD/out/orchestra/values/S2/isd_values.json --include-algos Stern,BJMM
 ```
 
 ## CryptAttackTester
