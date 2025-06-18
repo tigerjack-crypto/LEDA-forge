@@ -45,7 +45,13 @@ def argparse_check_positive(value):
 def get_pass_counter(dir_path: str) -> int:
     counter_file = os.path.join(dir_path, "counter.txt")
     if not os.path.exists(counter_file):
-        raise FileNotFoundError(f"No counter file in {dir_path}")
+        ans = input("Counter file not existing. Which step do you want to assume (default=0)?")
+        if ans == "":
+            return 0
+        else:
+            return int(ans)
+        # else:
+        #     raise FileNotFoundError(f"No counter file in {dir_path}")
 
     with open(counter_file, 'r') as f:
         current_pass = int(f.read().strip())
