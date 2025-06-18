@@ -12,11 +12,16 @@ import sys
 import time
 from datetime import datetime
 
-from ledaforge.launchers.CAT.utils.attacks_list import attacks0, attacks1, attacks2
-from ledaforge.launchers.CAT.utils.file_mgmt import OUT_DIR, OUT_FILE
+from ledaforge.launchers.CAT.utils.attacks_list import (attacks0, attacks1,
+                                                        attacks2)
+# from ledaforge.launchers.CAT.utils.file_mgmt import OUT_DIR, OUT_FILE
+from ledaforge.utils.common import dict_to_isd_value
+from ledaforge.utils.export.export import load_from_json
+from ledaforge.utils.paths import OUT_DIR, OUT_FILES_PART_FMT
 
 # Fixed values, stop at 1st iteration
 ATTACK_ITERATIONS = 'I=1,RE=1,X=1,YX=1'
+OUT_FILE = os.path.join("CAT", "stdout", ("{hostname}"), OUT_FILES_PART_FMT)
 
 # To testify that I tried, and failed, to have consistent unique values to
 # avoid redundant computation
@@ -62,7 +67,7 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description=
         "Run parallel ISD attack search and store outputs per (n,k,w) group.")
-    parser.add_argument("--isd_csv",
+    parser.add_argument("--input",
                         required=True,
                         help="Path to the input CSV containing (n,k,w) rows")
     parser.add_argument("--stop_at_first",
@@ -70,19 +75,17 @@ def parse_args():
                         help="Stop at the 1st iteration of the ISD attack")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
-        "--csv_contains_attacks",
+        "--input_contains_attacks",
         action="store_true",
         help=
-        ("If set, the CSV file must contain a separate column with attack labels. "
+        ("If set, the input file is a CSV file (n,k,w,attack), in which attack contains the CAT attack string. "
          "This option cannot be used together with --isd_levels."))
-
     group.add_argument(
         "--isd_levels",
         type=parse_isd_levels,
-        help=(
-            "Comma-separated list of ISD attack levels (e.g., 0,1 or (0,1,2)). "
-            "This option cannot be used together with --csv_contains_attacks."
-        ))
+        help=
+        ("Comma-separated list of ISD attack levels (e.g., 0,1 or (0,1,2)). "
+         "This option cannot be used together with --input_contains_attacks."))
 
     parser.add_argument("--start",
                         type=int,
@@ -187,20 +190,27 @@ def main():
     args = parse_args()
 
     problems_all = []
-    with open(args.isd_csv) as csvfile:
-        reader = csv.DictReader(csvfile)
 
-        # Read each row from the CSV file
-        for row in reader:
-            # Extract values and append to the items list
-            n = int(row['n'])  # Assuming 'n' is an integer
-            k = int(row['k'])  # Assuming 'k' is an integer
-            w = int(row['w'])  # Assuming 'w' is an integer
-            if args.csv_contains_attacks:
-                attack= row['attack']
-            else:
-                attack=None
+    if args.input_contains_attacks:
+        with open(args.input) as csvfile:
+            reader = csv.DictReader(csvfile)
+            # Read each row from the CSV file
+            for row in reader:
+                # Extract values and append to the items list
+                n = int(row['n'])  # Assuming 'n' is an integer
+                k = int(row['k'])  # Assuming 'k' is an integer
+                w = int(row['w'])  # Assuming 'w' is an integer
+                attack = row['attack']
             problems_all.append({'n': n, 'k': k, 'w': w, 'attack': attack})
+    else:
+        for json_value in load_from_json(args.input):
+            isd_value = dict_to_isd_value(json_value)
+            problems_all.append({
+                'n': isd_value.n,
+                'k': isd_value.k,
+                'w': isd_value.w,
+                'attack': None
+            })
 
     len_all = len(problems_all)
     print(f"{len_all} unique candidate ISD values")
@@ -236,30 +246,30 @@ def main():
                     raise Exception(f"Unrecognized attack {level}")
         attacks = list(itertools.chain(*attacks))
         print(f"Selected isd {args.isd_levels} having {len(attacks)} attacks")
-        for problem, attack in itertools.product(problems_all[start:end], attacks):
+        for problem, attack in itertools.product(problems_all[start:end],
+                                                 attacks):
             filename = OUT_FILE.format(hostname=hostname,
-                                        n=problem['n'],
-                                        k=problem['k'],
-                                        w=problem['w'],
-                                        ext='out')
+                                       n=problem['n'],
+                                       k=problem['k'],
+                                       w=problem['w'],
+                                       ext='out')
             # _ is the line_content
-            command, _ = get_command_content(
-                    problem, attack, ATTACK_ITERATIONS)
+            command, _ = get_command_content(problem, attack,
+                                             ATTACK_ITERATIONS)
             # if not is_already_computed(filename, line_content):
             commands.append((command, filename))
     else:
         # the attack is already in the csv file
         for problem in problems_all[start:end]:
             filename = OUT_FILE.format(hostname=hostname,
-                                        n=problem['n'],
-                                        k=problem['k'],
-                                        w=problem['w'],
-                                        ext='out')
-            command, _ = get_command_content(
-                    problem, problem['attack'], ATTACK_ITERATIONS)
+                                       n=problem['n'],
+                                       k=problem['k'],
+                                       w=problem['w'],
+                                       ext='out')
+            command, _ = get_command_content(problem, problem['attack'],
+                                             ATTACK_ITERATIONS)
             commands.append((command, filename))
     # load_already_computed(OUT_DIR.format(hostname=hostname))
-
 
     print(f"{len(commands)} commands to spawn")
 
