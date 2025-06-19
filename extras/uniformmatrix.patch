@@ -1,0 +1,176 @@
+--- a/submodules/cryptattacktester-20231020/uniformmatrix.cpp 
++++ b/submodules/cryptattacktester-20231020/uniformmatrix.cpp
+@@ -1,86 +1,90 @@
+-#include <vector>
++#include "uniformmatrix.h"
+ #include "bigint.h"
++#include "decoding.h"
+ #include "random.h"
+ #include "selection.h"
+-#include "decoding.h"
+-#include "uniformmatrix.h"
++#include <vector>
+ 
+ using namespace std;
+ 
+-std::vector<const char *> uniformmatrix_paramnames = {"N","K","W"};
++std::vector<const char *> uniformmatrix_paramnames = {"N", "K", "W"};
+ 
+-vector<vector<bigint>> uniformmatrix_params(map<string,string> &S)
+-{
++vector<vector<bigint>> uniformmatrix_params(map<string, string> &S) {
+   vector<vector<bigint>> result;
+ 
+   bigint Nmin = 8;
+   bigint Nmax = 8192;
+-  selection_constrain(S,"N",Nmin,Nmax);
+-  for (bigint N = Nmin;N <= Nmax;++N) {
+-    if (N < 8) continue;
+-    if (Nmin != Nmax) if (N%16 != 0) continue;
++  selection_constrain(S, "N", Nmin, Nmax);
++  for (bigint N = Nmin; N <= Nmax; ++N) {
++    if (N < 8)
++      continue;
++    if (Nmin != Nmax)
++      if (N % 16 != 0)
++        continue;
+ 
+     bigint lgq = 1;
+     bigint q = 2;
+-    while (q < N) { ++lgq; q *= 2; }
+-
+-    bigint Wmin = 0;
+-    bigint Wmax = N;
+-    selection_constrain(S,"W",Wmin,Wmax);
+-    for (bigint W = Wmin;W <= Wmax;++W) {
+-      bigint K = N-lgq*W;
+-      if (10*K < 7*N) break;
+-      if (10*K > 8*N) continue;
+-      if (!selection_allows(S,"K",K.get_str())) continue;
+-
+-      result.push_back(vector<bigint> {N,K,W});
++    while (q < N) {
++      ++lgq;
++      q *= 2;
++    }
++    bigint Kmin = 4;
++    bigint Kmax = 4096;
++    selection_constrain(S, "K", Kmin, Kmax);
++    for (bigint K = Kmin; K <= Kmax; ++K) {
++      // bigint K = N/2;
++      // if (!selection_allows(S,"K",K.get_str())) continue;
++
++      bigint Wmin = 0;
++      bigint Wmax = N;
++      selection_constrain(S, "W", Wmin, Wmax);
++      for (bigint W = Wmin; W <= Wmax; ++W) {
++        result.push_back(vector<bigint>{N, K, W});
++      }
+     }
+   }
+ 
+   return result;
+ }
+ 
+-bigint uniformmatrix_numinputs(const vector<bigint> &params)
+-{
++bigint uniformmatrix_numinputs(const vector<bigint> &params) {
+   bigint n = params.at(0);
+   bigint k = params.at(1);
+   bigint w = params.at(2);
+-  return binomial(n,w);
++  return binomial(n, w);
+ }
+ 
+-bigint uniformmatrix_numoutputs(const vector<bigint> &params)
+-{
++bigint uniformmatrix_numoutputs(const vector<bigint> &params) {
+   bigint n = params.at(0);
+   bigint k = params.at(1);
+   bigint w = params.at(2);
+   bigint result = 1;
+-  result <<= n-k;
++  result <<= n - k;
+   return result;
+ }
+ 
+-vector<vector<bool>> uniformmatrix_publickey(const vector<bigint> &params)
+-{
++vector<vector<bool>> uniformmatrix_publickey(const vector<bigint> &params) {
+   bigint n = params.at(0);
+   bigint k = params.at(1);
+   vector<vector<bool>> result;
+ 
+-  for (bigint i = 0;i < n-k;++i) {
++  for (bigint i = 0; i < n - k; ++i) {
+     vector<bool> resulti;
+-    for (bigint j = 0;j < k;++j)
++    for (bigint j = 0; j < k; ++j)
+       resulti.push_back(random_bool());
+     result.push_back(resulti);
+   }
+   return result;
+ }
+ 
+-vector<bool> uniformmatrix_plaintext(const vector<bigint> &params)
+-{
++vector<bool> uniformmatrix_plaintext(const vector<bigint> &params) {
+   bigint n = params.at(0);
+   bigint w = params.at(2);
+   vector<bool> result(n);
+ 
+   bigint q = 1;
+-  while (q < n) q *= 2;
++  while (q < n)
++    q *= 2;
+ 
+   while (w > 0) {
+     bigint pos = random_bigint_below(q);
+@@ -93,35 +97,35 @@ vector<bool> uniformmatrix_plaintext(const vector<bigint> &params)
+   return result;
+ }
+ 
+-vector<bool> uniformmatrix_enc(const vector<bigint> &params,const vector<bool> &m,const vector<vector<bool>> &pk)
+-{
++vector<bool> uniformmatrix_enc(const vector<bigint> &params,
++                               const vector<bool> &m,
++                               const vector<vector<bool>> &pk) {
+   bigint n = params.at(0);
+   bigint k = params.at(1);
+ 
+   vector<vector<bool>> H;
+-  for (bigint i = 0;i < n-k;++i) {
++  for (bigint i = 0; i < n - k; ++i) {
+     vector<bool> Hi;
+-    for (bigint j = 0;j < n-k;++j)
++    for (bigint j = 0; j < n - k; ++j)
+       Hi.push_back(i == j);
+-    Hi.insert(Hi.end(),pk.at(i).begin(),pk.at(i).end());
++    Hi.insert(Hi.end(), pk.at(i).begin(), pk.at(i).end());
+     H.push_back(Hi);
+   }
+ 
+   vector<bool> result;
+-  for (bigint i = 0;i < n-k;++i) {
++  for (bigint i = 0; i < n - k; ++i) {
+     bool resulti = 0;
+-    for (bigint j = 0;j < n;++j)
++    for (bigint j = 0; j < n; ++j)
+       resulti ^= H.at(i).at(j) & m.at(j);
+     result.push_back(resulti);
+   }
+   return result;
+ }
+ 
+-pair<vector<bool>,vector<bool>> uniformmatrix(const vector<bigint> &params)
+-{
++pair<vector<bool>, vector<bool>> uniformmatrix(const vector<bigint> &params) {
+   auto pk = uniformmatrix_publickey(params);
+   auto m = uniformmatrix_plaintext(params);
+-  auto ct = uniformmatrix_enc(params,m,pk);
+-  auto pub = decoding_serialize(pk,ct,params);
+-  return make_pair(pub,m);
++  auto ct = uniformmatrix_enc(params, m, pk);
++  auto pub = decoding_serialize(pk, ct, params);
++  return make_pair(pub, m);
+ }
