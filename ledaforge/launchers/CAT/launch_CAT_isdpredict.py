@@ -21,7 +21,8 @@ from ledaforge.utils.paths import OUT_DIR, OUT_FILES_PART_FMT
 
 # Fixed values, stop at 1st iteration
 ATTACK_ITERATIONS = 'I=1,RE=1,X=1,YX=1'
-OUT_FILE = os.path.join("CAT", "stdout", ("{hostname}"), OUT_FILES_PART_FMT)
+OUT_DIR_CAT = os.path.join(OUT_DIR, "CAT", "stdout", ("{hostname}"))
+OUT_FILE = os.path.join(OUT_DIR, "CAT", "stdout", ("{hostname}"), OUT_FILES_PART_FMT)
 
 # To testify that I tried, and failed, to have consistent unique values to
 # avoid redundant computation
@@ -107,7 +108,7 @@ def parse_args():
 
 def handle(task):
     command, out_filename = task
-    # print(f"[{datetime.now().isoformat(timespec='seconds')}] Starting process w/ command {command_txt}")
+    # print(f"[{datetime.now().isoformat(timespec='seconds')}] Starting process w/ command {command}, out_file {out_filename}")
     ts = time.time()
     try:
         searchparams = subprocess.run(command,
@@ -226,7 +227,7 @@ def main():
     print(f"Range {start}:{end}", file=sys.stderr)
 
     hostname = os.uname()[1] if args.add_hostname else "."
-    os.makedirs(OUT_DIR.format(hostname=hostname), exist_ok=True)
+    os.makedirs(OUT_DIR_CAT.format(hostname=hostname), exist_ok=True)
 
     commands = []
     if args.isd_levels is not None:
