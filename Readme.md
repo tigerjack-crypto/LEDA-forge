@@ -26,6 +26,21 @@ instances for use in post-quantum cryptographic applications.
   (bit-level, combinatorial circuit unrolling).
 - `ledaforge.launchers.orchestra.*`: Orchestrators for coordinating generation and conversion.
 
+The main directory for the input and output is `../leda_design/data_exchange`.
+Such directory is expected to exist.
+
+Inside the directory, these subdirectories may be created
+- `orchestra`. The directory containing the outputs generated from the
+  `ledaforge.launchers.orchestra.*` launchers. Such output is organized in
+  stages, so inside the directory the tools wiil generate the directories `S0`,
+  `S1`, ... Inside each stage directory, there are different directories, whose
+  starting name is a progressive number, containing the step counter.
+- `LT`. The output directory of the LEDATools tool, organized as
+  `{isd_attack}/{n}_{k}_{w}.json`. So, each file contains the output of a single
+  ISD attack.
+- `CE`. The output directory of the CryptographiEstimators tool, organized as 
+  `{output_type}/{mem_model}/{n}_{k}_{w}.json`
+
 ## ISD LEDA Values Generation Steps
 
 ### Stage 0
@@ -39,7 +54,7 @@ instances for use in post-quantum cryptographic applications.
   format `<n, k, w>` using
   `ledaforge.launchers.orchestra.launch_leda_to_isd_converter`. Ex.
   ```bash
-
+python3 -m ledaforge.launchers.orchestra.launch_leda_to_isd_converter --stage 1 --input-dir ../leda_design/data_exchange/orchestra/S0/exhaustive_generation --update-counter
   ```
 - Compute ISD complexities using external tools (see [Tools](#ISD-Tools)
 - Merge previous-stage LEDA values with estimates of their computational
@@ -51,7 +66,6 @@ instances for use in post-quantum cryptographic applications.
   - Quantum: 154, 219, 283
   An example usage is
   ```bash
-  python3 -m ledaforge.launchers.orchestra.launch_leda_to_attack_merger 1 ../leda_design/stime_ISD/out/orchestra/values/S0/exhaustive_generation/ ../leda_design/stime_ISD/out/LT/Stern LT 1
   ```
 - Perform a Decoding Failure Rate (DFR) analysis on filtered results using
   external tools, and output a new set of LEDA values.
@@ -93,11 +107,11 @@ Then, you can run the custom launcher script `ledaforge.launchers.LT.launch_LT`.
 An example run is:
 
 ```bash
-python3 -m ledaforge.launchers.LT.launch_LT --threads 2 --json "$MDIR_LINUX_DATA"/vc/crypto/leda_design/stime_ISD/out/orchestra/values/S2/isd_values.json --include-algos Stern,BJMM
+python3 -m ledaforge.launchers.LT.launch_LT --threads 2 --json "$MDIR_LINUX_DATA"/vc/crypto/leda_design/data_exchange/orchestra/S2/isd_values.json --include-algos Prange,Leon --include-quantum-algos Q_Lee_Brickell
 ```
 
-## CryptAttackTester
-The CryptAttackTester (CAT) source code can be retrieved from one of the original
+## CryptAttackTester (CAT)
+The CAT source code can be retrieved from one of the original
 authors blog, that I report here for simplicity
 [link](https://cat.cr.yp.to/cryptattacktester-20231020.tar.gz).
 To add it to your local project, use
@@ -107,34 +121,41 @@ tar -xf cryptattacktester-20231020.tar.gz -C submodules
 rm cryptattacktester-20231020.tar.gz
 ```
 
-Since the original source code requires compilation, you need to generate the binaries from the submodule.
+Before proceeding, you need to adapt the source code to the LEDA case
+```bash
+patch -p1 < extras/uniformmatrix.patch
+```
+
+Then, you need to generate the binaries from the submodule.
 ```bash
 cd ./submodules/cryptattacktester-20231020/
 make -j
 ```
 
-The script launcher `ledaforge.launchers.CAT.launch_CAT_isdpredict`, heavily based
-on the `isdpredict1.py` script provided by the CAT authors, can then be used to
-generate the ISD estimates.
+The script launcher `ledaforge.launchers.CAT.launch_CAT_isdpredict`, based on
+the `isdpredict1.py` script provided by the CAT authors with custom tweaks, can
+then be used to generate the ISD estimates.
 
 
 Example usage:
 ```bash
-python3 -m ledaforge.launchers.CAT.launch_CAT_isdpredict --isd_csv ledaforge/launchers/CAT/isd_leda.csv --start 62 --end 63 --isd_level 2 --processes 12 --add_hostname
+python3 -m ledaforge.launchers.CAT.launch_CAT_isdpredict --input "$MDIR_LINUX_DATA"/vc/crypto/leda_design/data_exchange/orchestra/S2/isd_values.json --start 3 --end 5 --isd_level 0 --processes 1 --add_hostname
 ```
 
-Note: This tool is resource-intensive at higher ISD levels. To run it on
-multiple servers, use the `--add_hostname` flag to write results to separate
-subdirectories, and easily copy them on a unique machine for post-processing. To
-aggregate the outputs (as this is the way in which the authors intended it to be
-used) you can then run
+Note: This tool is resource-intensive at higher ISD levels. It is intended to
+run on multiple servers. In this case, you can add the `--start` and `--end`
+flag to process only a subset of values coming from the input file, and the
+`--add_hostname` flag to write results to separate subdirectories. You can later
+copy them on a unique machine for post-processing. To aggregate the outputs (as
+this is the way in which the authors intended it to be used) you can then run
 
 ```bash
 cat {server1,server2,server3}/* > all.out
 ```
 
 Then, to process the final merged output, and put each ISD value in a separate
-file together with its best attack, execute
+file together with its best attack, as this project is instead expecting,
+execute
 
 ```bash
 python3 -m ledaforge.launchers.launch_cat_out_processer all.out 2
