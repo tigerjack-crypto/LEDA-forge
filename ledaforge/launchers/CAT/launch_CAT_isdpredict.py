@@ -128,7 +128,7 @@ def handle(task):
 
     # print(f"[{datetime.now().isoformat(timespec='seconds')}] Finished process w/ command {command_txt}")
     if len(searchparams.stdout.strip()) == 0:
-        print(f"len0: {command}", file=sys.stderr)
+        print(f"len0: {' '.join(command)}", file=sys.stderr)
         return None
     result_line = searchparams.stdout.strip().splitlines()[-1]
 
