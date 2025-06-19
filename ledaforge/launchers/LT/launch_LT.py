@@ -17,6 +17,9 @@ ALGO_NAMES = {
   "MMT",
   "BJMM",
 }
+Q_ALGO_NAMES = {
+    "Lee-Brickell",
+}
 
 def main():
     parser = argparse.ArgumentParser(
@@ -34,8 +37,17 @@ def main():
         type=str,
         required=True,
         help=
-        (f"Comma-separated list of algorithm names to exclude from execution.\n"
-         f"Available algorithms that can be excluded: {ALGO_NAMES}.\n"
+        (f"Comma-separated list of algorithm names to include.\n"
+         f"Available algorithms that can be included: {ALGO_NAMES}.\n"
+         ),
+        default="")
+    parser.add_argument(
+        "--include-quantum-algos",
+        type=str,
+        required=True,
+        help=
+        (f"Comma-separated list of quantum algorithm names to include.\n"
+         f"Available algorithms that can be included: {Q_ALGO_NAMES}.\n"
          ),
         default="")
     args = parser.parse_args()
@@ -49,10 +61,39 @@ def main():
     ]
 
     for alg in include_names:
-        print(alg)
+        # print(alg)
         command = ['work_factor_computation', '--json', args.json,
                    '--algorithms', alg,
-                   '--out-dir', os.path.join(OUT_DIR, 'LT') , '--out', alg]
+                   '--qc-attack-type', "Plain",
+                   '--out-dir', os.path.join(OUT_DIR, 'LT') ,
+                   '--out', f"Plain/{alg}"]
+        # print(' '.join(command))
+        try:
+            res = subprocess.run(command, env=env, check=True, capture_output=True, text=True)
+            # Optional: Check stderr even if returncode == 0
+            if res.stderr:
+                print("Command succeeded, but there were warnings/errors in stderr:")
+                print(res.stderr)
+        except subprocess.CalledProcessError as e:
+            print("Command failed:")
+            print("Return code:", e.returncode)
+            print("Standard error:")
+            print(e.stderr)
+            print("Standard output:")
+            print(e.stdout)
+
+    include_q_names = [
+        name.strip() for name in args.include_quantum_algos.split(",")
+        if name.strip()
+    ]
+
+    for alg in include_q_names:
+        # print(alg)
+        command = ['work_factor_computation', '--json', args.json,
+                   '--quantum-algorithms', alg,
+                   '--qc-attack-type', "Plain",
+                   '--out-dir', os.path.join(OUT_DIR, 'LT') ,
+                   '--out', f"Plain/{alg}"]
         # print(' '.join(command))
         try:
             res = subprocess.run(command, env=env, check=True, capture_output=True, text=True)
