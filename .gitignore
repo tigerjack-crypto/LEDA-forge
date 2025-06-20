@@ -1,6 +1,7 @@
 ##################
 # PROJECT
 ##################
+.pdb-pyhist
 submodules/cryptattacktester-20231020/
 _nsfw
 isdleda/experiments
