@@ -38,8 +38,9 @@ Inside the directory, these subdirectories may be created
 - `LT`. The output directory of the LEDATools tool, organized as
   `{isd_attack}/{n}_{k}_{w}.json`. So, each file contains the output of a single
   ISD attack.
-- `CE`. The output directory of the CryptographiEstimators tool, organized as 
+- `CE`. The output directory of the CryptographiEstimators tool, organized as
   `{output_type}/{mem_model}/{n}_{k}_{w}.json`
+- `CAT`. The output directory of the CryptAttackTester tool, organized as `{hostname}
 
 ## ISD LEDA Values Generation Steps
 

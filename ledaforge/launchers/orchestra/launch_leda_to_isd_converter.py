@@ -75,7 +75,7 @@ def main():
     output_dir = os.path.join(f"{OUT_DIR}", "orchestra",
                               f"S{args.stage}")
     counter = get_pass_counter(output_dir)
-    _tmp = get_output_filename(output_dir, counter)
+    _tmp = get_output_filename(output_dir, f"{counter:03}")
 
     print(f"Results will be in {_tmp}")
     levels = [1, 3, 5]

@@ -110,7 +110,7 @@ def main():
     output_dir = os.path.join(f"{OUT_DIR}", "orchestra", 
                               f"S{args.stage}")
     counter = get_pass_counter(output_dir)
-    _tmp = os.path.join(output_dir, f"{counter}_leda2attack")
+    _tmp = os.path.join(output_dir, f"{counter:03}_leda2attack")
     # _was_existing = False
     if not os.path.exists(_tmp):
         os.mkdir(_tmp)
