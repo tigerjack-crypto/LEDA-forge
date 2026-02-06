@@ -38,6 +38,8 @@ def worker(level, input_dir):
 
 
 def get_output_filename(output_dir, counter):
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
     _tmp = os.path.join(output_dir, f"{counter}_leda2isd")
     if os.path.exists(_tmp):
         print(f"path {_tmp} already existing")
