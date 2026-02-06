@@ -40,7 +40,7 @@ Inside the directory, these subdirectories may be created
   ISD attack.
 - `CE`. The output directory of the CryptographiEstimators tool, organized as
   `{output_type}/{mem_model}/{n}_{k}_{w}.json`
-- `CAT`. The output directory of the CryptAttackTester tool, organized as `{hostname}
+- `CAT`. The output directory of the CryptAttackTester tool, organized as `{hostname}`
 
 ## ISD LEDA Values Generation Steps
 
@@ -48,6 +48,17 @@ Inside the directory, these subdirectories may be created
 
 - Generate an exhaustive list of LEDA parameter values in CSV format `<n0, p, v, t>`
   using `ledaforge.launchers.orchestra.launch_values_generation`.
+
+  If you want to skip Stage 0 and start with your own set of data points, you
+  have to provide a csv file containing, for each category level, the proper
+  parameters. For example, the file `cat_1_region.csv` may look like this
+
+  ```csv
+  n0,p,v,t,tau
+  2,11933,41,84,
+  2,11933,47,84,
+  2,11933,53,84,
+  ```
 
 ### Stage $i > 0$
 - For each LEDA value coming from the previous stage, derive the ISD parameter
@@ -57,14 +68,17 @@ Inside the directory, these subdirectories may be created
   ```bash
 python3 -m ledaforge.launchers.orchestra.launch_leda_to_isd_converter --stage 1 --input-dir ../leda_design/data_exchange/orchestra/S0/exhaustive_generation --update-counter
   ```
+
 - Compute ISD complexities using external tools (see [Tools](#ISD-Tools)
 - Merge previous-stage LEDA values with estimates of their computational
-  complexity `ledaforge.launchers.orchestra.launch_leda_to_attack_merger`. The
-  script additionally apply reduction models (e.g., DOOM) and filter for values
-  where cost $\geq c \lambda$, where $\lambda$ is a threshold security level, and $c$ a threshold percentage.
-  The lambda values, as specified or derived from NIST, are
+    complexity using `ledaforge.launchers.orchestra.launch_leda_to_attack_merger`.
+  The script additionally apply reduction models (e.g., DOOM) and filter for
+  values where cost $\geq c \lambda$, where $\lambda$ is a threshold security
+  level, and $c$ a threshold percentage. The lambda values, as specified or
+  derived from NIST, are
   - Classical: 143, 207, 272
   - Quantum: 154, 219, 283
+
   An example usage is
   ```bash
   ```
@@ -76,6 +90,9 @@ The tools used to estimate the computational complexity of ISD attack parameters
 are kept as submodules of this project (inside `./submodules` directory). To
 initialize all submodules, you should use
 `git submodule update --init --recursive`
+
+*Prerequisites*
+- psutil
 
 This section provides descriptions and usage details for the tools integrated
 into the workflow.
@@ -89,7 +106,7 @@ Original tool, developed by TII, can be found
 launcher can be run using `ledaforge.launchers.CE.launch_CE`. An example run is
 
 ```bash
-LOG_LEVEL=error python3 -m ledaforge.launchers.CE.launch_CE --poolsize 64 --max-tasks 1 --chunksize 1 --out-format json --input $MDIR_LINUX_DATA/vc/leda_design/stime_ISD/out/orchestra/values/S3/2_leda2isd/isd_values.json --excluded-algos=Dumer,Stern,BJMM
+LOG_LEVEL=error python3 -m ledaforge.launchers.CE.launch_CE --poolsize 64 --max-tasks 1 --chunksize 1 --out-format json --input ../leda_design/data_exchange/orchestra/S101/000_leda2isd/isd_values.json --exclude-algos=Dumer,Stern,BJMM
 ```
 
 ## LEDATools (LT)
@@ -108,7 +125,7 @@ Then, you can run the custom launcher script `ledaforge.launchers.LT.launch_LT`.
 An example run is:
 
 ```bash
-python3 -m ledaforge.launchers.LT.launch_LT --threads 2 --json "$MDIR_LINUX_DATA"/vc/crypto/leda_design/data_exchange/orchestra/S2/isd_values.json --include-algos Prange,Leon --include-quantum-algos Q_Lee_Brickell
+python3 -m ledaforge.launchers.LT.launch_LT --threads 8 --json "$MDIR_LINUX_DATA"/vc/crypto/leda_design/data_exchange/orchestra/S101/000_leda2isd/isd_values.json --include-algos Prange,Leon,Dumer,Stern,BJMM,Finiasz_Sendrier,MMT --include-quantum-algos Q_Lee_Brickell
 ```
 
 ## CryptAttackTester (CAT)
@@ -124,10 +141,10 @@ rm cryptattacktester-20231020.tar.gz
 
 Before proceeding, you need to adapt the source code to the LEDA case
 ```bash
-patch -p1 < extras/uniformmatrix.patch
+patch -p1 submodules/cryptattacktester-20231020/uniformmatrix.cpp extras/uniformmatrix.patch
 ```
 
-Then, you need to generate the binaries from the submodule.
+Then, you need to go inside the submodule, and generate the binaries from the submodule.
 ```bash
 cd ./submodules/cryptattacktester-20231020/
 make -j
