@@ -75,10 +75,15 @@ python3 -m ledaforge.launchers.orchestra.launch_leda_to_isd_converter --stage 1 
 - Compute ISD complexities using external tools (see [Tools](#ISD-Tools)
 
 - Merge previous-stage LEDA values with estimates of their computational
-    complexity using `ledaforge.launchers.orchestra.launch_leda_to_attack_merger`.
+    complexity using `ledaforge.launchers.orchestra.launch_leda_to_attack_merger`. Note that LT needs an additional merger
     As an example
     ```bash
-    python3 -m ledaforge.launchers.orchestra.launch_leda_to_attack_merger -s 101 -i ../leda_design/data_exchange/orchestra/S100/crypto26/ -a ../leda_design/data_exchange/LT/ -t LT
+    python3 -m ledaforge.launchers.orchestra.launch_leda_to_attack_merger -s 101 -i ../leda_design/data_exchange/orchestra/S100/crypto26/ -a ../leda_design/data_exchange/CE/json -t CE_CONST
+    python3 -m ledaforge.launchers.orchestra.launch_leda_to_attack_merger -s 101 -i ../leda_design/data_exchange/orchestra/S100/crypto26/ -a ../leda_design/data_exchange/CE/json -t CE_LOG
+    python3 -m ledaforge.launchers.orchestra.launch_leda_to_attack_merger -s 101 -i ../leda_design/data_exchange/orchestra/S100/crypto26/ -a ../leda_design/data_exchange/CE/json -t CE_SQRT
+    python3 -m ledaforge.launchers.orchestra.launch_leda_to_attack_merger -s 101 -i ../leda_design/data_exchange/orchestra/S100/crypto26/ -a ../leda_design/data_exchange/CE/json -t CE_CBRT
+    python3 -m ledaforge.launchers.LT.launch_LT_merger ../leda_design/data_exchange/LT/
+    python3 -m ledaforge.launchers.orchestra.launch_leda_to_attack_merger -s 101 -i ../leda_design/data_exchange/orchestra/S100/crypto26/ -a ../leda_design/data_exchange/LT/ALL -t LT
     ```
 
   The script additionally apply reduction models (e.g., DOOM) and filter for
