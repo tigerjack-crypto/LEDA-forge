@@ -18,4 +18,4 @@ sys.path.append(
     os.path.join(thisdir, "..", "..", "..", "submodules",
                  "cryptographic_estimators"))
 # sys.path.append(os.path.join(thisdir, "..", "..", "submodules", "isd_scripts"))
-print(f"INFO: sys path is {sys.path}")
+# print(f"INFO: sys path is {sys.path}")
