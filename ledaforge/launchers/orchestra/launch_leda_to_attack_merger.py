@@ -109,7 +109,7 @@ def main():
         case _:
             raise Exception("Wrong tool, possibles are")
 
-    output_dir = os.path.join(f"{OUT_DIR}", "orchestra", 
+    output_dir = os.path.join(f"{OUT_DIR}", "orchestra",
                               f"S{args.stage}")
     counter = get_pass_counter(output_dir)
     _tmp = os.path.join(output_dir, f"{counter:03}_leda2attack")
