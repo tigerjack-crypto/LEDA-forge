@@ -27,7 +27,8 @@ instances for use in post-quantum cryptographic applications.
 - `ledaforge.launchers.orchestra.*`: Orchestrators for coordinating generation and conversion.
 
 The main directory for the input and output is `../leda_design/data_exchange`.
-Such directory is expected to exist.
+Such directory is expected to exist. If you want to change such path, you have
+to directly modify the variable `ledaforge.utils.paths.OUT_DIR`
 
 Inside the directory, these subdirectories may be created
 - `orchestra`. The directory containing the outputs generated from the
@@ -40,7 +41,9 @@ Inside the directory, these subdirectories may be created
   ISD attack.
 - `CE`. The output directory of the CryptographiEstimators tool, organized as
   `{output_type}/{mem_model}/{n}_{k}_{w}.json`
-- `CAT`. The output directory of the CryptAttackTester tool, organized as `{hostname}`
+- `CAT`. The output directory of the CryptAttackTester tool, organized as
+  `{output_type}/{hostname}/{n}_{j}_{w}.out`, with the only value admissible for
+  `{output_type}` at the moment is `stdout`.
 
 ## ISD LEDA Values Generation Steps
 
