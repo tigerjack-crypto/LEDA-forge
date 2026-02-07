@@ -32,6 +32,7 @@ def check_dataset_LT(attack_dir: str, isd_val: ISDValue, reduction,
     data = load_from_json(filename)
 
     c_time = data['Classic']['value'] - reduction
+    # compare eq. 6.6 of my phd thesis
     q_time = (data['Quantum']['value']) * 2 - reduction
     return c_time, q_time
 
