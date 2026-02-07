@@ -117,7 +117,7 @@ def handle(task):
                                       text=True,
                                       check=True)
     except subprocess.CalledProcessError as e:
-        print(f"Error for {command}\n{e.stderr}", file=sys.stderr)
+        print(f"Error for {' '.join(command)}\n{e.stderr}", file=sys.stderr)
         return None
     except Exception as e:
         print(f"Unexpected error for {command}\n{str(e)}", file=sys.stderr)
