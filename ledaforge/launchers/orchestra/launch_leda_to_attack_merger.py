@@ -75,7 +75,7 @@ def main():
     parser.add_argument("--tool",
                         "-t",
                         type=str,
-                        choices=["LT", "CE", "CAT"],
+                        choices=["LT", "CAT", "CE_CONST", "CE_LOG", "CE_SQRT", "CE_CBRT"],
                         required=True,
                         help="Tool used: LT, CE, or CAT.")
     parser.add_argument("--check-threshold",
@@ -106,6 +106,8 @@ def main():
             check_dataset = functools.partial(check_dataset_CE, 'SQRT')
         case 'CE_CBRT':
             check_dataset = functools.partial(check_dataset_CE, 'CBRT')
+        case _:
+            raise Exception("Wrong tool, possibles are")
 
     output_dir = os.path.join(f"{OUT_DIR}", "orchestra", 
                               f"S{args.stage}")
