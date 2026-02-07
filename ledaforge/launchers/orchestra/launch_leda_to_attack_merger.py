@@ -93,7 +93,7 @@ def main():
         f"stage {args.stage}, check_threshold {args.check_threshold}, update counter {args.update_counter}"
     )
 
-    match args.rtool:
+    match args.tool:
         case 'LT':
             check_dataset = check_dataset_LT
         case 'CAT':
