@@ -1,0 +1,12 @@
+--- submodules/cryptattacktester-20231020/Makefile_orig	2026-02-07 15:37:35.114003804 +0100
++++ submodules/cryptattacktester-20231020/Makefile	2026-02-07 15:38:05.312656594 +0100
+@@ -61,3 +61,9 @@
+ .SECONDARY:
+ 
+ -include $(CPPDEP)
++
++
++.PHONY: clean
++
++clean:
++	rm -f $(ATTACKBINS) $(MOREBINS) *.o *.so *.d

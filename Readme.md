@@ -148,7 +148,10 @@ rm cryptattacktester-20231020.tar.gz
 
 Before proceeding, you need to adapt the source code to the LEDA case
 ```bash
+cp submodules/cryptattacktester-20231020/uniformmatrix{,_orig}.cpp
+cp submodules/cryptattacktester-20231020/Makefile{,_orig}
 patch -p1 submodules/cryptattacktester-20231020/uniformmatrix.cpp extras/uniformmatrix.patch
+patch -p1 submodules/cryptattacktester-20231020/Makefile extras/Makefile.patch
 ```
 
 Then, you need to go inside the submodule, and generate the binaries from the submodule.
