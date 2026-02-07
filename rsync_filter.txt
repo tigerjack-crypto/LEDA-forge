@@ -1,5 +1,5 @@
 # Other
-# submodules/
++ submodules/LEDATools
 - submodules/LEDATools/bin/
 - submodules/LEDATools/lib/
 - submodules/LEDATools/build/
