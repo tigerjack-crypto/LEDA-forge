@@ -1,5 +1,16 @@
 # Other
-# - submodules/
+# submodules/
+- submodules/LEDATools/bin/
+- submodules/LEDATools/lib/
+- submodules/LEDATools/build/
+# Exclude everything in the directory
+cryptattacktester-20231020/***
+# Re-include directories (so rsync can descend)
++ cryptattacktester-20231020/**/
+# Re-include C++ sources
++ cryptattacktester-20231020/**/*.cpp
++ cryptattacktester-20231020/**/*.h
+
 - out/
 - *.csv
 - *.json

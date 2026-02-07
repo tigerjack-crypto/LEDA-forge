@@ -33,6 +33,6 @@ SERVER=$1
 echo "syncing $PROJECT_ROOT/$PROJECT to $SERVER:$PROJECT_SUBROOT"
 
 rsync -avz --info=progress2 \
-  --filter="merge $PROJECT_ROOT/$PROJECT/rsync_filter.txt" \
-  "$PROJECT_ROOT/$PROJECT" "$SERVER":"$PROJECT_SUBROOT"
+  --filter="merge $PROJECT_ROOT/$PROJECT_SUBROOT/$PROJECT/rsync_filter.txt" \
+  "$PROJECT_ROOT/$PROJECT_SUBROOT/$PROJECT" "$SERVER":"$PROJECT_SUBROOT"
 
