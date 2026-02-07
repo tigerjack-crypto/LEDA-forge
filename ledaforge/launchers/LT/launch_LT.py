@@ -67,7 +67,7 @@ def main():
             '--qc-attack-type',
             "Plain",
             '--out-dir',
-            os.path.join(OUT_DIR, 'LT'),
+            os.path.join(OUT_DIR, 'LT', 'Classic'),
             '--out',
             f"{alg}",
         ]
@@ -108,7 +108,7 @@ def main():
             '--qc-attack-type',
             "Plain",
             '--out-dir',
-            os.path.join(OUT_DIR, 'LT'),
+            os.path.join(OUT_DIR, 'LT', 'Quantum'),
             '--out',
             f"{alg}",
         ]

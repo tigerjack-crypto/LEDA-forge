@@ -6,11 +6,17 @@ import os
 from typing import Dict, List, Tuple
 
 import numpy as np
-from ledaforge.launchers.launcher_utils import (
-    AES_LAMBDAS, QAES_LAMBDAS, get_kra1_from_leda, get_kra2_from_leda,
-    get_kra3_from_leda, get_mra_from_leda, get_pass_counter,
-    get_qc_reduction_kra1, get_qc_reduction_kra2, get_qc_reduction_kra3,
-    get_qc_reduction_mra, set_pass_counter)
+from ledaforge.launchers.launcher_utils import (AES_LAMBDAS, QAES_LAMBDAS,
+                                                get_kra1_from_leda,
+                                                get_kra2_from_leda,
+                                                get_kra3_from_leda,
+                                                get_mra_from_leda,
+                                                get_pass_counter,
+                                                get_qc_reduction_kra1,
+                                                get_qc_reduction_kra2,
+                                                get_qc_reduction_kra3,
+                                                get_qc_reduction_mra,
+                                                set_pass_counter)
 from ledaforge.utils.common import Attack, ISDValue, LEDAValueAttackCost
 from ledaforge.utils.export.export import (from_csv_to_ledavalue,
                                            load_from_json,
@@ -25,8 +31,8 @@ def check_dataset_LT(attack_dir: str, isd_val: ISDValue, reduction,
 
     data = load_from_json(filename)
 
-    c_time = data['Classic']['Plain']['value'] - reduction
-    q_time = (data['Quantum']['Plain']['value']) * 2 - reduction
+    c_time = data['Classic']['value'] - reduction
+    q_time = (data['Quantum']['value']) * 2 - reduction
     return c_time, q_time
 
 
@@ -157,6 +163,7 @@ def main():
             c_costs[Attack.MsgR] = c_aes
             q_costs[Attack.MsgR] = q_aes
             del isd_val
+            # print("MRA over")
 
             # KRA 1
             isd_val = get_kra1_from_leda(leda_val)
@@ -174,6 +181,7 @@ def main():
             c_costs[Attack.KeyR1] = c_aes
             q_costs[Attack.KeyR1] = q_aes
             del isd_val, c_aes, q_aes
+            # print("KRA1 over")
 
             # KRA 2
             if leda_val.n0 != 2:
@@ -194,6 +202,7 @@ def main():
                 q_aes = np.inf
             c_costs[Attack.KeyR2] = c_aes
             q_costs[Attack.KeyR2] = q_aes
+            # print("KRA2 over")
 
             # KRA 3
             isd_val = get_kra3_from_leda(leda_val)
@@ -210,12 +219,13 @@ def main():
             assert c_aes is not None and q_aes is not None
             c_costs[Attack.KeyR3] = c_aes
             q_costs[Attack.KeyR3] = q_aes
+            # print("KRA3 over")
 
             # min c, min q, min c attack, min q attack
             min_c = min(c_costs.items(), key=lambda x: x[1])
             min_q = min(q_costs.items(), key=lambda x: x[1])
-            if args.check_threshold and (min_c[1] > .75 * c_lambda
-                                         and min_q[1] > .75 * q_lambda):
+            if (args.check_threshold and (min_c[1] > .75 * c_lambda
+                                         and min_q[1] > .75 * q_lambda)) or not args.check_threshold:
                 lvac = LEDAValueAttackCost(leda_val, c_costs, q_costs, min_c,
                                            min_q)
                 leda_values_to_attacks.append(lvac)
