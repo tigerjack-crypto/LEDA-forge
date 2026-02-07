@@ -4,7 +4,7 @@
 - submodules/LEDATools/lib/
 - submodules/LEDATools/build/
 # Exclude everything in the directory
-cryptattacktester-20231020/***
+- cryptattacktester-20231020/***
 # Re-include directories (so rsync can descend)
 + cryptattacktester-20231020/**/
 # Re-include C++ sources
