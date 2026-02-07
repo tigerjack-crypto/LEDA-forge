@@ -3,13 +3,19 @@
 - submodules/LEDATools/bin/
 - submodules/LEDATools/lib/
 - submodules/LEDATools/build/
-# Exclude everything in the directory
-- cryptattacktester-20231020/***
-# Re-include directories (so rsync can descend)
-+ cryptattacktester-20231020/**/
-# Re-include C++ sources
-+ cryptattacktester-20231020/**/*.cpp
-+ cryptattacktester-20231020/**/*.h
+
+# Include the top-level directory so rsync can descend
++ submodules/cryptattacktester-20231020/
+
+# Include the files you want
++ submodules/cryptattacktester-20231020/*.cpp
++ submodules/cryptattacktester-20231020/*.h
++ submodules/cryptattacktester-20231020/Makefile*
+
+# Exclude everything else
+- submodules/cryptattacktester-20231020/***
+
+
 
 - out/
 - *.csv
