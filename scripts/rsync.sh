@@ -18,8 +18,9 @@
 #===============================================================================
 
 set -o nounset                              # Treat unset variables as an error
-PROJECT=isd-leda
-PROJECT_ROOT="$MDIR_LINUX_DATA"/vc/crypto
+PROJECT=LEDA-forge
+PROJECT_ROOT="$MDIR_LINUX_DATA"
+PROJECT_SUBROOT="vc/crypto"
 echo "project root $PROJECT_ROOT"
 # SERVER=alphonseasproxy
 if [ -z "$1" ]; then
@@ -29,9 +30,9 @@ fi
 
 SERVER=$1
 
-echo "syncing $PROJECT_ROOT/$PROJECT to $SERVER:vc/"
+echo "syncing $PROJECT_ROOT/$PROJECT to $SERVER:$PROJECT_SUBROOT"
 
 rsync -avz --info=progress2 \
   --filter="merge $PROJECT_ROOT/$PROJECT/rsync_filter.txt" \
-  "$PROJECT_ROOT/$PROJECT" "$SERVER":vc/
+  "$PROJECT_ROOT/$PROJECT" "$SERVER":"$PROJECT_SUBROOT"
 
