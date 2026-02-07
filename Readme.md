@@ -73,8 +73,14 @@ python3 -m ledaforge.launchers.orchestra.launch_leda_to_isd_converter --stage 1 
   ```
 
 - Compute ISD complexities using external tools (see [Tools](#ISD-Tools)
+
 - Merge previous-stage LEDA values with estimates of their computational
     complexity using `ledaforge.launchers.orchestra.launch_leda_to_attack_merger`.
+    As an example
+    ```bash
+    python3 -m ledaforge.launchers.orchestra.launch_leda_to_attack_merger -s 101 -i ../leda_design/data_exchange/orchestra/S100/crypto26/ -a ../leda_design/data_exchange/LT/ -t LT
+    ```
+
   The script additionally apply reduction models (e.g., DOOM) and filter for
   values where cost $\geq c \lambda$, where $\lambda$ is a threshold security
   level, and $c$ a threshold percentage. The lambda values, as specified or
@@ -82,9 +88,6 @@ python3 -m ledaforge.launchers.orchestra.launch_leda_to_isd_converter --stage 1 
   - Classical: 143, 207, 272
   - Quantum: 154, 219, 283
 
-  An example usage is
-  ```bash
-  ```
 - Perform a Decoding Failure Rate (DFR) analysis on filtered results using
   external tools, and output a new set of LEDA values.
 
@@ -103,14 +106,6 @@ into the workflow.
 Each tool outputs a list of files named as `{n:06}_{k:06}_{w:03}` in a specific
 folder. Check `ledaforge.utils.paths` for further info.
 
-## Cryptographic Estimators (CE):
-Original tool, developed by TII, can be found
-[here](https://github.com/Crypto-TII/CryptographicEstimators). The custom
-launcher can be run using `ledaforge.launchers.CE.launch_CE`. An example run is
-
-```bash
-LOG_LEVEL=error python3 -m ledaforge.launchers.CE.launch_CE --poolsize 64 --max-tasks 1 --chunksize 1 --out-format json --input ../leda_design/data_exchange/orchestra/S101/000_leda2isd/isd_values.json --exclude-algos=Dumer,Stern,BJMM
-```
 
 ## LEDATools (LT)
 LEDAtools for classical and quantum decoding.
@@ -128,9 +123,18 @@ Then, you can run the custom launcher script `ledaforge.launchers.LT.launch_LT`.
 An example run is:
 
 ```bash
-python3 -m ledaforge.launchers.LT.launch_LT --threads 8 --json "$MDIR_LINUX_DATA"/vc/crypto/leda_design/data_exchange/orchestra/S101/000_leda2isd/isd_values.json --include-algos Prange,Leon,Dumer,Stern,BJMM,Finiasz_Sendrier,MMT --include-quantum-algos Q_Lee_Brickell
+python3 -m ledaforge.launchers.LT.launch_LT --threads 8 --json "$MDIR_LINUX_DATA"/vc/crypto/leda_design/data_exchange/orchestra/S101/000_leda2isd/isd_values.json --include-algos Prange,Leon,Stern,Finiasz_Sendrier,MMT,BJMM --include-quantum-algos Q_Lee_Brickell
 ```
 
+
+## Cryptographic Estimators (CE):
+Original tool, developed by TII, can be found
+[here](https://github.com/Crypto-TII/CryptographicEstimators). The custom
+launcher can be run using `ledaforge.launchers.CE.launch_CE`. An example run is
+
+```bash
+LOG_LEVEL=error python3 -m ledaforge.launchers.CE.launch_CE --poolsize 64 --max-tasks 1 --chunksize 1 --out-format json --input ../leda_design/data_exchange/orchestra/S101/000_leda2isd/isd_values.json --exclude-algos=Dumer,Stern,BJMM
+```
 ## CryptAttackTester (CAT)
 The CAT source code can be retrieved from one of the original
 authors blog, that I report here for simplicity
