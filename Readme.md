@@ -191,8 +191,11 @@ file together with its best attack, as this project is instead expecting,
 execute
 
 ```bash
-python3 -m ledaforge.launchers.launch_cat_out_processer all.out 2
+python3 -m ledaforge.launchers.launch_cat_out_processer ~/vc/crypto/leda_design/data_exchange/CAT/stdout/all.out 1
 ```
+where 1 is the ISD value of the CAT attack (0, 1 or 2). The results will be put inside
+the directory `/leda_design/data_exchange/CAT/txt-isd{0,1,2}` and written in
+`{n}_{k}_{w}.txt` as: complexity value (1st line), command line parameters (second line).
 
 
 # DFR Tools

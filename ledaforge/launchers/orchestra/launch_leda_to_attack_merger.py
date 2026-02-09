@@ -151,9 +151,9 @@ def main():
                     isd_val,
                     reduction=get_qc_reduction_mra(leda_val),
                     msg=f"MRA, {leda_val.p} {leda_val.n0} {leda_val.v}")
-            except FileNotFoundError:
+            except FileNotFoundError as e:
                 missing_counter += 1
-                print(f"File not found for {leda_val} and {isd_val}")
+                print(f"File not found for {leda_val} and {isd_val}\n{e}")
                 continue
             if c_aes is None:
                 # at least c_aes present, q_aes is only from LT
@@ -176,7 +176,7 @@ def main():
                     msg=f"KRA1, {leda_val.p} {leda_val.n0} {leda_val.v}")
             except FileNotFoundError:
                 missing_counter += 1
-                print(f"File not found for {leda_val} and {isd_val}")
+                print(f"File not found for {leda_val} and {isd_val}\n{e}")
                 c_aes, q_aes = np.inf, np.inf
             assert c_aes is not None and q_aes is not None
             c_costs[Attack.KeyR1] = c_aes
@@ -195,7 +195,7 @@ def main():
                         msg=f"KRA2, {leda_val.p} {leda_val.n0} {leda_val.v}")
                 except FileNotFoundError:
                     missing_counter += 1
-                    print(f"File not found for {leda_val} and {isd_val}")
+                    print(f"File not found for {leda_val} and {isd_val}\n{e}")
                     c_aes, q_aes = np.inf, np.inf
                 assert c_aes is not None and q_aes is not None
             else:
@@ -215,7 +215,7 @@ def main():
                     msg=f"KRA3, {leda_val.p} {leda_val.n0} {leda_val.v}")
             except FileNotFoundError:
                 missing_counter += 1
-                print(f"File not found for {leda_val} and {isd_val}")
+                print(f"File not found for {leda_val} and {isd_val}\n{e}")
                 c_aes, q_aes = np.inf, np.inf
             assert c_aes is not None and q_aes is not None
             c_costs[Attack.KeyR3] = c_aes
