@@ -56,35 +56,37 @@ Inside the directory, these subdirectories may be created
   have to provide a csv file containing, for each category level, the proper
   parameters. For example, the file `cat_1_region.csv` may look like this
 
-  ```csv
-  n0,p,v,t,tau
-  2,11933,41,84,
-  2,11933,47,84,
-  2,11933,53,84,
-  ```
+```csv
+n0,p,v,t,tau
+2,11933,41,84,
+2,11933,47,84,
+2,11933,53,84,
+```
 
 ### Stage $i > 0$
 - For each LEDA value coming from the previous stage, derive the ISD parameter
   sets (note that there are 4 ISD attack parameter for each LEDA value) in JSON
   format `<n, k, w>` using
   `ledaforge.launchers.orchestra.launch_leda_to_isd_converter`. Ex.
-  ```bash
+
+```bash
 python3 -m ledaforge.launchers.orchestra.launch_leda_to_isd_converter --stage 1 --input-dir ../leda_design/data_exchange/orchestra/S0/exhaustive_generation --update-counter
-  ```
+```
 
 - Compute ISD complexities using external tools (see [Tools](#ISD-Tools)
 
 - Merge previous-stage LEDA values with estimates of their computational
     complexity using `ledaforge.launchers.orchestra.launch_leda_to_attack_merger`. Note that LT needs an additional merger
     As an example
-    ```bash
-    python3 -m ledaforge.launchers.orchestra.launch_leda_to_attack_merger -s 101 -i ../leda_design/data_exchange/orchestra/S100/crypto26/ -a ../leda_design/data_exchange/CE/json -t CE_CONST
-    python3 -m ledaforge.launchers.orchestra.launch_leda_to_attack_merger -s 101 -i ../leda_design/data_exchange/orchestra/S100/crypto26/ -a ../leda_design/data_exchange/CE/json -t CE_LOG
-    python3 -m ledaforge.launchers.orchestra.launch_leda_to_attack_merger -s 101 -i ../leda_design/data_exchange/orchestra/S100/crypto26/ -a ../leda_design/data_exchange/CE/json -t CE_SQRT
-    python3 -m ledaforge.launchers.orchestra.launch_leda_to_attack_merger -s 101 -i ../leda_design/data_exchange/orchestra/S100/crypto26/ -a ../leda_design/data_exchange/CE/json -t CE_CBRT
-    python3 -m ledaforge.launchers.LT.launch_LT_merger ../leda_design/data_exchange/LT/
-    python3 -m ledaforge.launchers.orchestra.launch_leda_to_attack_merger -s 101 -i ../leda_design/data_exchange/orchestra/S100/crypto26/ -a ../leda_design/data_exchange/LT/ALL -t LT
-    ```
+
+```bash
+python3 -m ledaforge.launchers.orchestra.launch_leda_to_attack_merger -s 101 -i ../leda_design/data_exchange/orchestra/S100/crypto26/ -a ../leda_design/data_exchange/CE/json -t CE_CONST
+python3 -m ledaforge.launchers.orchestra.launch_leda_to_attack_merger -s 101 -i ../leda_design/data_exchange/orchestra/S100/crypto26/ -a ../leda_design/data_exchange/CE/json -t CE_LOG
+python3 -m ledaforge.launchers.orchestra.launch_leda_to_attack_merger -s 101 -i ../leda_design/data_exchange/orchestra/S100/crypto26/ -a ../leda_design/data_exchange/CE/json -t CE_SQRT
+python3 -m ledaforge.launchers.orchestra.launch_leda_to_attack_merger -s 101 -i ../leda_design/data_exchange/orchestra/S100/crypto26/ -a ../leda_design/data_exchange/CE/json -t CE_CBRT
+python3 -m ledaforge.launchers.LT.launch_LT_merger ../leda_design/data_exchange/LT/
+python3 -m ledaforge.launchers.orchestra.launch_leda_to_attack_merger -s 101 -i ../leda_design/data_exchange/orchestra/S100/crypto26/ -a ../leda_design/data_exchange/LT/ALL -t LT
+```
 
   The script additionally apply reduction models (e.g., DOOM) and filter for
   values where cost $\geq c \lambda$, where $\lambda$ is a threshold security
