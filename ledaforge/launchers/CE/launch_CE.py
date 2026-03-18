@@ -23,6 +23,9 @@ from ledaforge.utils.export.export import (load_from_json, save_to_json,
                                          save_to_pickle)
 from ledaforge.utils.paths import OUT_DIR, OUT_FILES_PART_FMT
 
+# Upper bound on memory size
+MEM_BOUND = 80
+
 # Map string names to actual algorithm classes/functions
 ALGO_NAME_MAP = {
     "BJMM": BJMM,
@@ -151,6 +154,7 @@ def isd_compute(arg, out_type: str, file_ext: str,
             sd = SDEstimator(value.n,
                              value.k,
                              value.w,
+                             memory_bound=MEM_BOUND,
                              excluded_algorithms=skip_algos +
                              list(additional_skip),
                              memory_access=mem_access.value)
